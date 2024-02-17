@@ -114,6 +114,13 @@ output_df_top_50_indiv <- data.frame(tbl=character(),mem=character(),ROI=charact
 interaction_output_df_top_50_indiv <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),indiv_rsq=numeric(),indiv_adj_rsq=numeric())
 mem_output_df_top_50_indiv <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),indiv_rsq=numeric(),indiv_adj_rsq=numeric())
 
+output_df_top_20_indiv <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),indiv_rsq=numeric(),indiv_adj_rsq=numeric())
+interaction_output_df_top_20_indiv <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),indiv_rsq=numeric(),indiv_adj_rsq=numeric())
+mem_output_df_top_20_indiv <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),indiv_rsq=numeric(),indiv_adj_rsq=numeric())
+
+output_df_top_20 <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),cumulative_rsq=numeric(),cumulative_adj_rsq=numeric())
+interaction_output_df_top_20 <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),cumulative_rsq=numeric(),cumulative_adj_rsq=numeric())
+mem_output_df_top_20 <- data.frame(tbl=character(),mem=character(),ROI=character(),num_factors=numeric(),cumulative_rsq=numeric(),cumulative_adj_rsq=numeric())
 
 
 # tbl <- "encycl"
@@ -140,7 +147,7 @@ for (tbl in tbl_names) {
       
       ### need to add the rest of the facs that match the rows correctly
       # there are more than 67 factors, but 67 is the number of top factors after applying thresholding
-      how_many_fac <- 100 #50 #228 #67, 8
+      how_many_fac <- 50 #100 #228 #67, 8
       
       if (tbl == "encycl" || tbl == "vis") {
         
@@ -301,7 +308,76 @@ for (tbl in tbl_names) {
       # 
      # (4a) Let's look at the M's on their own
       
-      ##### Y ~ M
+      ### top 8
+      
+      ## X ~ M -- derive top 8
+      # Initialize vectors to store R-squared values
+      rsquared_individual = numeric(how_many_fac)
+      adj_rsquared_individual = numeric(how_many_fac)
+      # Loop through each M variable
+      for (i in 1:how_many_fac) {
+        # Define the formula for the linear model
+        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", i)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual[i] = summary(model)$r.squared
+        adj_rsquared_individual[i] = summary(model)$adj.r.squared
+      }
+      # Get indices of the top 10 individual R^2 values
+      top_indices_8 <- order(adj_rsquared_individual, decreasing = TRUE)[1:8]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_8 <- adj_rsquared_individual[top_indices_8]
+      
+      ## X ~ M -- indiv
+      rsquared_individual_x = numeric(length(top_indices_8))
+      adj_rsquared_individual_x = numeric(length(top_indices_8))
+      # Loop through each M variable
+      for (i in 1:length(top_indices_8)) {
+        # Define the formula for the linear model
+        factor_index <- top_indices_8[i]
+        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", factor_index)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual_x[i] = summary(model)$r.squared
+        adj_rsquared_individual_x[i] = summary(model)$adj.r.squared
+        mem_output_df_top_8_indiv <- rbind(mem_output_df_top_8_indiv, data.frame(
+                                      tbl = tbl,
+                                      mem = mem,
+                                      ROI = ROI,
+                                      num_factors = factor_index,
+                                      indiv_rsq = rsquared_individual_x[i],
+                                      indiv_adj_rsq = adj_rsquared_individual_x[i]))
+      }
+      ## X ~ M -- cumulative
+      # Initialize vectors to store cumulative R-squared and adjusted R-squared values
+      cumulative_rsquared_x <- numeric(length(top_indices_8))
+      cumulative_adj_rsquared_x <- numeric(length(top_indices_8))
+      # Loop to calculate cumulative R-squared values using top factors
+      for (i in 1:length(top_indices_8)) {
+        # Select the top factors up to the i-th
+        selected_factors <- top_indices_8[1:i]
+        # Create the model formula by including the selected top factors cumulatively
+        formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
+        cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
+        # Fit the linear model with the cumulative set of factors
+        cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
+        # Extract and store the cumulative R-squared and adjusted R-squared values
+        # cumulative_rsquared_x[i] <- summary(cumulative_model)$r.squared
+        # cumulative_adj_rsquared_x[i] <- summary(cumulative_model)$adj.r.squared
+        cumulative_rsquared_x <- summary(cumulative_model)$r.squared
+        cumulative_adj_rsquared_x <- summary(cumulative_model)$adj.r.squared
+        
+        mem_output_df_top_8 <- rbind(mem_output_df_top_8, data.frame(tbl = tbl,
+                                                                     mem = mem,
+                                                                     ROI = ROI,
+                                                                     num_factors = i,
+                                                                     cumulative_rsq = cumulative_rsquared_x,
+                                                                     cumulative_adj_rsq = cumulative_adj_rsquared_x))
+      }
+      
+      ## Y ~ M -- derive top
       # Initialize vectors to store R-squared values
       rsquared_individual = numeric(how_many_fac)
       adj_rsquared_individual = numeric(how_many_fac)
@@ -315,15 +391,20 @@ for (tbl in tbl_names) {
         rsquared_individual[i] = summary(model)$r.squared
         adj_rsquared_individual[i] = summary(model)$adj.r.squared
       }
-      
       # Get indices of the top 10 individual R^2 values
       top_indices_8 <- order(adj_rsquared_individual, decreasing = TRUE)[1:8]
       # Extract the top 10 R^2 values using the indices
       top_rsq_values_8 <- adj_rsquared_individual[top_indices_8]
       
+      
+      ## Y ~ M -- indiv
+      top_indices_8 <- order(adj_rsquared_individual, decreasing = TRUE)[1:8]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_8 <- adj_rsquared_individual[top_indices_8]
+      
       # Initialize vectors to store R-squared and adjusted R-squared values for the top factors
-      rsquared_top <- numeric(length(top_indices_8))
-      adj_rsquared_top <- numeric(length(top_indices_8))
+      rsquared_indivdual <- numeric(length(top_indices_8))
+      adj_rsquared_individual <- numeric(length(top_indices_8))
       # Loop over the top_indices instead of 1:how_many_fac
       for (i in seq_along(top_indices_8)) {
         # Get the factor index from top_indices
@@ -333,18 +414,18 @@ for (tbl in tbl_names) {
         # Fit the linear model
         model <- lm(formula, data = average_values_by_Item)
         # Extract and store the R-squared and adjusted R-squared values
-        rsquared_top[i] <- summary(model)$r.squared
-        adj_rsquared_top[i] <- summary(model)$adj.r.squared
+        rsquared_individual[i] <- summary(model)$r.squared
+        adj_rsquared_individual[i] <- summary(model)$adj.r.squared
         output_df_top_8_indiv <- rbind(output_df_top_8_indiv, data.frame(
                                       tbl = tbl,
                                       mem = mem,
                                       ROI = ROI,
-                                      num_factors = i,
-                                      indiv_rsq = indiv_rsquared[i],
-                                      indiv_adj_rsq = adj_rsquared_top[i]))
+                                      num_factors = factor_index,
+                                      indiv_rsq = rsquared_individual[i],
+                                      indiv_adj_rsq = adj_rsquared_individual[i]))
       }
       
-      # Initialize vectors to store cumulative R-squared and adjusted R-squared values
+      ## Y ~ M -- cumulative
       cumulative_rsquared <- numeric(length(top_indices_8))
       cumulative_adj_rsquared <- numeric(length(top_indices_8))
       # Loop to calculate cumulative R-squared values using top factors
@@ -361,7 +442,6 @@ for (tbl in tbl_names) {
         # cumulative_adj_rsquared[i] <- summary(cumulative_model)$adj.r.squared
         cumulative_rsquared <- summary(cumulative_model)$r.squared
         cumulative_adj_rsquared <- summary(cumulative_model)$adj.r.squared
-        
         output_df_top_8 <- rbind(output_df_top_8, data.frame(tbl = tbl,
                                                              mem = mem,
                                                              ROI = ROI,
@@ -370,61 +450,10 @@ for (tbl in tbl_names) {
                                                              cumulative_adj_rsq = cumulative_adj_rsquared))
       }
       
+      ## Y ~ X*M -- derive top
       # Initialize vectors to store R-squared values
-      rsquared_individual_x = numeric(how_many_fac)
-      adj_rsquared_individual_x = numeric(how_many_fac)
-      # Loop through each M variable
-      for (i in 1:how_many_fac) {
-        # Define the formula for the linear model
-        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", i)))
-        # Fit the linear model
-        model = lm(formula, data = average_values_by_Item)
-        # Extract and store the R-squared value
-        rsquared_individual_x[i] = summary(model)$r.squared
-        adj_rsquared_individual_x[i] = summary(model)$adj.r.squared
-        mem_output_df_top_8_indiv <- rbind(mem_output_df_top_8_indiv, data.frame(
-                                          tbl = tbl,
-                                          mem = mem,
-                                          ROI = ROI,
-                                          num_factors = i,
-                                          indiv_rsq = rsquared_individual_x[i],
-                                          indiv_adj_rsq = adj_rsquared_individual_x[i]))
-      }
-      
-      # Get indices of the top 10 R^2 values
-      top_indices_x_8 <- order(adj_rsquared_individual_x, decreasing = TRUE)[1:8]
-      # Initialize vectors to store cumulative R-squared and adjusted R-squared values
-      cumulative_rsquared_x <- numeric(length(top_indices_x_8))
-      cumulative_adj_rsquared_x <- numeric(length(top_indices_x_8))
-      # Loop to calculate cumulative R-squared values using top factors
-      for (i in 1:length(top_indices_x_8)) {
-        # Select the top factors up to the i-th
-        selected_factors <- top_indices_x_8[1:i]
-        # Create the model formula by including the selected top factors cumulatively
-        formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
-        cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
-        # Fit the linear model with the cumulative set of factors
-        cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
-        # Extract and store the cumulative R-squared and adjusted R-squared values
-        # cumulative_rsquared_x[i] <- summary(cumulative_model)$r.squared
-        # cumulative_adj_rsquared_x[i] <- summary(cumulative_model)$adj.r.squared
-        cumulative_rsquared_x <- summary(cumulative_model)$r.squared
-        cumulative_adj_rsquared_x <- summary(cumulative_model)$adj.r.squared
-        
-        mem_output_df_top_8 <- rbind(mem_output_df_top_8, data.frame(tbl = tbl,
-                                                                     mem = mem,
-                                                                     ROI = ROI,
-                                                                     hemisphere = hemisphere,
-                                                                     num_factors = i,
-                                                                     cumulative_rsq = cumulative_rsquared_x,
-                                                                     cumulative_adj_rsq = cumulative_adj_rsquared_x))
-      }
-      
-      
-      ##### now let's look at Y ~ X*M
-      # Initialize vectors to store R-squared values
-      rsquared_individual_xm = numeric(how_many_fac)
-      adj_rsquared_individual_xm = numeric(how_many_fac)
+      rsquared_individual = numeric(how_many_fac)
+      adj_rsquared_individual = numeric(how_many_fac)
       # Loop through each M variable
       for (i in 1:how_many_fac) {
         # Define the formula for the linear model
@@ -432,27 +461,46 @@ for (tbl in tbl_names) {
         # Fit the linear model
         model = lm(formula, data = average_values_by_Item)
         # Extract and store the R-squared value
+        rsquared_individual[i] = summary(model)$r.squared
+        adj_rsquared_individual[i] = summary(model)$adj.r.squared
+      }
+      # Get indices of the top 10 individual R^2 values
+      top_indices_8 <- order(adj_rsquared_individual, decreasing = TRUE)[1:8]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_8 <- adj_rsquared_individual[top_indices_8]
+      
+      
+      ## Y ~ X*M -- indiv
+      rsquared_individual_xm = numeric(length(top_indices_8))
+      adj_rsquared_individual_xm = numeric(length(top_indices_8))
+      # Loop through each M variable
+      for (i in 1:length(top_indices_8)) {
+        factor_index <- top_indices_8[i]
+        # Define the formula for the linear model using the top factor
+        formula <- as.formula(paste("Average_Y ~ Average_X*", paste0("Average_M", factor_index)))
+        # Define the formula for the linear model
+        #formula = as.formula(paste("Average_Y ~ Average_X*", paste0("Average_M", i)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
         rsquared_individual_xm[i] = summary(model)$r.squared
         adj_rsquared_individual_xm[i] = summary(model)$adj.r.squared
         interaction_output_df_top_8_indiv <- rbind(interaction_output_df_top_8_indiv, data.frame(
-                                                  tbl = tbl,
-                                                  mem = mem,
-                                                  ROI = ROI,
-                                                  num_factors = i,
-                                                  indiv_rsq = rsquared_individual_xm[i],
-                                                  indiv_adj_rsq = adj_rsquared_individual_xm[i]))
+                                              tbl = tbl,
+                                              mem = mem,
+                                              ROI = ROI,
+                                              num_factors = factor_index,
+                                              indiv_rsq = rsquared_individual_xm[i],
+                                              indiv_adj_rsq = adj_rsquared_individual_xm[i]))
       }
       
-      # Get indices of the top 10 R^2 values
-      top_indices_xm_8 <- order(adj_rsquared_individual_xm, decreasing = TRUE)[1:8]
-      
-      # Initialize vectors to store cumulative R-squared and adjusted R-squared values
-      cumulative_rsquared_xm <- numeric(length(top_indices_xm_8))
-      cumulative_adj_rsquared_xm <- numeric(length(top_indices_xm_8))
+      ## Y ~ X*M -- cumulative
+      cumulative_rsquared_xm <- numeric(length(top_indices_8))
+      cumulative_adj_rsquared_xm <- numeric(length(top_indices_8))
       # Loop to calculate cumulative R-squared values using top factors
-      for (i in 1:length(top_indices_xm_8)) {
+      for (i in 1:length(top_indices_8)) {
         # Select the top factors up to the i-th
-        selected_factors <- top_indices_xm_8[1:i]
+        selected_factors <- top_indices_8[1:i]
         # Create the model formula by including the selected top factors cumulatively
         #formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
         #cumulative_formula <- as.formula(paste("Average_Y ~ Average_X + ", formula_terms))
@@ -466,18 +514,91 @@ for (tbl in tbl_names) {
         # cumulative_adj_rsquared_xm[i] <- summary(cumulative_model)$adj.r.squared
         cumulative_rsquared_xm <- summary(cumulative_model)$r.squared
         cumulative_adj_rsquared_xm <- summary(cumulative_model)$adj.r.squared
-        
         interaction_output_df_top_8 <- rbind(interaction_output_df_top_8, data.frame(tbl = tbl,
                                                                                      mem = mem,
                                                                                      ROI = ROI,
-                                                                                     hemisphere = hemisphere,
                                                                                      num_factors = i,
                                                                                      cumulative_rsq = cumulative_rsquared_xm,
                                                                                      cumulative_adj_rsq = cumulative_adj_rsquared_xm))
-        
       }
-      ##### Y ~ M
+      
+      
+      
+      ### top 50
+      
+      ## X ~ M -- derive top 50
       # Initialize vectors to store R-squared values
+      rsquared_individual = numeric(how_many_fac)
+      adj_rsquared_individual = numeric(how_many_fac)
+      # Loop through each M variable
+      for (i in 1:how_many_fac) {
+        # Define the formula for the linear model
+        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", i)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual[i] = summary(model)$r.squared
+        adj_rsquared_individual[i] = summary(model)$adj.r.squared
+      }
+      # Get indices of the top 10 individual R^2 values
+      top_indices_50 <- order(adj_rsquared_individual, decreasing = TRUE)[1:50]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_50 <- adj_rsquared_individual[top_indices_50]
+      
+      
+      ## X ~ M -- indiv
+      rsquared_individual_x = numeric(length(top_indices_50))
+      adj_rsquared_individual_x = numeric(length(top_indices_50))
+      # Loop through each M variable
+      for (i in 1:length(top_indices_50)) {
+        factor_index <- top_indices_50[i]
+        # Define the formula for the linear model
+        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", factor_index)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual_x[i] = summary(model)$r.squared
+        adj_rsquared_individual_x[i] = summary(model)$adj.r.squared
+        
+        mem_output_df_top_50_indiv <- rbind(mem_output_df_top_50_indiv, data.frame(
+                                      tbl = tbl,
+                                      mem = mem,
+                                      ROI = ROI,
+                                      num_factors = factor_index,
+                                      indiv_rsq =rsquared_individual_x[i],
+                                      indiv_adj_rsq =  adj_rsquared_individual_x[i]))
+      }
+      
+      
+      ## X ~ M -- cumulative
+      cumulative_rsquared_x <- numeric(length(top_indices_50))
+      cumulative_adj_rsquared_x <- numeric(length(top_indices_50))
+      # Loop to calculate cumulative R-squared values using top factors
+      for (i in 1:length(top_indices_50)) {
+        # Select the top factors up to the i-th
+        selected_factors <- top_indices_50[1:i]
+        # Create the model formula by including the selected top factors cumulatively
+        formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
+        cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
+        # Fit the linear model with the cumulative set of factors
+        cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
+        # Extract and store the cumulative R-squared and adjusted R-squared values
+        # cumulative_rsquared_x[i] <- summary(cumulative_model)$r.squared
+        # cumulative_adj_rsquared_x[i] <- summary(cumulative_model)$adj.r.squared
+        cumulative_rsquared_x <- summary(cumulative_model)$r.squared
+        cumulative_adj_rsquared_x <- summary(cumulative_model)$adj.r.squared
+        
+        mem_output_df_top_50 <- rbind(mem_output_df_top_50, data.frame(tbl = tbl,
+                                                                       mem = mem,
+                                                                       ROI = ROI,
+                                                                       num_factors = i,
+                                                                       cumulative_rsq = cumulative_rsquared_x,
+                                                                       cumulative_adj_rsq = cumulative_adj_rsquared_x))
+      }
+      
+      
+      
+      ## Y ~ M -- derive top
       rsquared_individual = numeric(how_many_fac)
       adj_rsquared_individual = numeric(how_many_fac)
       # Loop through each M variable
@@ -495,10 +616,11 @@ for (tbl in tbl_names) {
       top_indices_50 <- order(adj_rsquared_individual, decreasing = TRUE)[1:50]
       # Extract the top 10 R^2 values using the indices
       top_rsq_values_50 <- adj_rsquared_individual[top_indices_50]
-
-      # Initialize vectors to store R-squared and adjusted R-squared values for the top factors
-      rsquared_top <- numeric(length(top_indices_50))
-      adj_rsquared_top <- numeric(length(top_indices_50))
+      
+      
+      ## Y ~ M -- indiv
+      rsquared_indiv <- numeric(length(top_indices_50))
+      adj_rsquared_indiv <- numeric(length(top_indices_50))
       # Loop over the top_indices instead of 1:how_many_fac
       for (i in seq_along(top_indices_50)) {
         # Get the factor index from top_indices
@@ -508,18 +630,18 @@ for (tbl in tbl_names) {
         # Fit the linear model
         model <- lm(formula, data = average_values_by_Item)
         # Extract and store the R-squared and adjusted R-squared values
-        rsquared_top[i] <- summary(model)$r.squared
-        adj_rsquared_top[i] <- summary(model)$adj.r.squared
+        rsquared_indiv[i] <- summary(model)$r.squared
+        adj_rsquared_indiv[i] <- summary(model)$adj.r.squared
         output_df_top_50_indiv <- rbind(output_df_top_50_indiv, data.frame(
-                                    tbl = tbl,
-                                    mem = mem,
-                                    ROI = ROI,
-                                    num_factors = i,
-                                    indiv_rsq = rsquared_top[i],
-                                    indiv_adj_rsq =  adj_rsquared_top[i]))
+                                  tbl = tbl,
+                                  mem = mem,
+                                  ROI = ROI,
+                                  num_factors = factor_index,
+                                  indiv_rsq = rsquared_indiv[i],
+                                  indiv_adj_rsq =  adj_rsquared_indiv[i]))
       }
-
-      # Initialize vectors to store cumulative R-squared and adjusted R-squared values
+      
+      ## Y ~ M -- cumulative
       cumulative_rsquared <- numeric(length(top_indices_50))
       cumulative_adj_rsquared <- numeric(length(top_indices_50))
       # Loop to calculate cumulative R-squared values using top factors
@@ -536,181 +658,68 @@ for (tbl in tbl_names) {
         # cumulative_adj_rsquared[i] <- summary(cumulative_model)$adj.r.squared
         cumulative_rsquared <- summary(cumulative_model)$r.squared
         cumulative_adj_rsquared <- summary(cumulative_model)$adj.r.squared
-
+        
         output_df_top_50 <- rbind(output_df_top_50, data.frame(tbl = tbl,
                                                                mem = mem,
                                                                ROI = ROI,
-                                                               hemisphere = hemisphere,
                                                                num_factors = i,
                                                                cumulative_rsq = cumulative_rsquared ,
                                                                cumulative_adj_rsq = cumulative_adj_rsquared))
       }
-
-      # # Get indices of the top 10 R^2 values
-      # top_indices_100 <- order(adj_rsquared_individual, decreasing = TRUE)[1:100]
-      # # Extract the top 10 R^2 values using the indices
-      # top_rsq_values_100 <- adj_rsquared_individual[top_indices_100]
-      # 
-      # # Initialize vectors to store R-squared and adjusted R-squared values for the top factors
-      # rsquared_top <- numeric(length(top_indices_100))
-      # adj_rsquared_top <- numeric(length(top_indices_100))
-      # # Loop over the top_indices instead of 1:how_many_fac
-      # for (i in seq_along(top_indices_100)) {
-      #   # Get the factor index from top_indices
-      #   factor_index <- top_indices_100[i]
-      #   # Define the formula for the linear model using the top factor
-      #   formula <- as.formula(paste("Average_Y ~ ", paste0("Average_M", factor_index)))
-      #   # Fit the linear model
-      #   model <- lm(formula, data = average_values_by_Item)
-      #   # Extract and store the R-squared and adjusted R-squared values
-      #   rsquared_top[i] <- summary(model)$r.squared
-      #   adj_rsquared_top[i] <- summary(model)$adj.r.squared
-      # }
       
-      # # Initialize vectors to store cumulative R-squared and adjusted R-squared values
-      # cumulative_rsquared <- numeric(length(top_indices_100))
-      # cumulative_adj_rsquared <- numeric(length(top_indices_100))
-      # # Loop to calculate cumulative R-squared values using top factors
-      # for (i in 1:length(top_indices_100)) {
-      #   # Select the top factors up to the i-th
-      #   selected_factors <- top_indices_100[1:i]
-      #   # Create the model formula by including the selected top factors cumulatively
-      #   formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
-      #   cumulative_formula <- as.formula(paste("Average_Y ~ ", formula_terms))
-      #   # Fit the linear model with the cumulative set of factors
-      #   cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
-      #   # Extract and store the cumulative R-squared and adjusted R-squared values
-      #   # cumulative_rsquared[i] <- summary(cumulative_model)$r.squared
-      #   # cumulative_adj_rsquared[i] <- summary(cumulative_model)$adj.r.squared
-      #   cumulative_rsquared <- summary(cumulative_model)$r.squared
-      #   cumulative_adj_rsquared <- summary(cumulative_model)$adj.r.squared
-      #   
-      #   output_df_top_100 <- rbind(output_df_top_100, data.frame(tbl = tbl,
-      #                                                          mem = mem,
-      #                                                          ROI = ROI,
-      #                                                          hemisphere = hemisphere,
-      #                                                          num_factors = i,
-      #                                                          cumulative_rsq = cumulative_rsquared ,
-      #                                                          cumulative_adj_rsq = cumulative_adj_rsquared))
-      # }
-      
-      ##### now let's look at X ~ M
-      # Initialize vectors to store R-squared values
-      rsquared_individual_x = numeric(how_many_fac)
-      adj_rsquared_individual_x = numeric(how_many_fac)
+      ## Y ~ X*M -- derive top 50
+      rsquared_individual = numeric(how_many_fac)
+      adj_rsquared_individual = numeric(how_many_fac)
       # Loop through each M variable
       for (i in 1:how_many_fac) {
         # Define the formula for the linear model
-        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", i)))
+        formula = as.formula(paste("Average_Y ~ Average_X*", paste0("Average_M", i)))
         # Fit the linear model
         model = lm(formula, data = average_values_by_Item)
         # Extract and store the R-squared value
-        rsquared_individual_x[i] = summary(model)$r.squared
-        adj_rsquared_individual_x[i] = summary(model)$adj.r.squared
-        
-        mem_output_df_top_50_indiv <- rbind(mem_output_df_top_50_indiv, data.frame(
-                                      tbl = tbl,
-                                      mem = mem,
-                                      ROI = ROI,
-                                      num_factors = i,
-                                      indiv_rsq =rsquared_individual_x[i],
-                                      indiv_adj_rsq =  adj_rsquared_individual_x[i]))
+        rsquared_individual[i] = summary(model)$r.squared
+        adj_rsquared_individual[i] = summary(model)$adj.r.squared
       }
       # 
-      # Get indices of the top 10 R^2 values
-      top_indices_x_50 <- order(adj_rsquared_individual_x, decreasing = TRUE)[1:50]
-
-      # Initialize vectors to store cumulative R-squared and adjusted R-squared values
-      cumulative_rsquared_x <- numeric(length(top_indices_x_50))
-      cumulative_adj_rsquared_x <- numeric(length(top_indices_x_50))
-      # Loop to calculate cumulative R-squared values using top factors
-      for (i in 1:length(top_indices_x_50)) {
-        # Select the top factors up to the i-th
-        selected_factors <- top_indices_x_50[1:i]
-        # Create the model formula by including the selected top factors cumulatively
-        formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
-        cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
-        # Fit the linear model with the cumulative set of factors
-        cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
-        # Extract and store the cumulative R-squared and adjusted R-squared values
-        # cumulative_rsquared_x[i] <- summary(cumulative_model)$r.squared
-        # cumulative_adj_rsquared_x[i] <- summary(cumulative_model)$adj.r.squared
-        cumulative_rsquared_x <- summary(cumulative_model)$r.squared
-        cumulative_adj_rsquared_x <- summary(cumulative_model)$adj.r.squared
-
-        mem_output_df_top_50 <- rbind(mem_output_df_top_50, data.frame(tbl = tbl,
-                                                                       mem = mem,
-                                                                       ROI = ROI,
-                                                                       hemisphere = hemisphere,
-                                                                       num_factors = i,
-                                                                       cumulative_rsq = cumulative_rsquared_x,
-                                                                       cumulative_adj_rsq = cumulative_adj_rsquared_x))
-      }
-
       # # Get indices of the top 10 R^2 values
-      # top_indices_x_100 <- order(adj_rsquared_individual_x, decreasing = TRUE)[1:100]
-      # 
-      # # Initialize vectors to store cumulative R-squared and adjusted R-squared values
-      # cumulative_rsquared_x <- numeric(length(top_indices_x_100))
-      # cumulative_adj_rsquared_x <- numeric(length(top_indices_x_100))
-      # # Loop to calculate cumulative R-squared values using top factors
-      # for (i in 1:length(top_indices_x_100)) {
-      #   # Select the top factors up to the i-th
-      #   selected_factors <- top_indices_x_100[1:i]
-      #   # Create the model formula by including the selected top factors cumulatively
-      #   formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
-      #   cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
-      #   # Fit the linear model with the cumulative set of factors
-      #   cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
-      #   # Extract and store the cumulative R-squared and adjusted R-squared values
-      #   # cumulative_rsquared_x[i] <- summary(cumulative_model)$r.squared
-      #   # cumulative_adj_rsquared_x[i] <- summary(cumulative_model)$adj.r.squared
-      #   cumulative_rsquared_x <- summary(cumulative_model)$r.squared
-      #   cumulative_adj_rsquared_x <- summary(cumulative_model)$adj.r.squared
-      #   
-      #   mem_output_df_top_100 <- rbind(mem_output_df_top_100, data.frame(tbl = tbl,
-      #                                                                  mem = mem,
-      #                                                                  ROI = ROI,
-      #                                                                  hemisphere = hemisphere,
-      #                                                                  num_factors = i,
-      #                                                                  cumulative_rsq = cumulative_rsquared_x,
-      #                                                                  cumulative_adj_rsq = cumulative_adj_rsquared_x))
-      # }
+      top_indices_50 <- order(adj_rsquared_individual, decreasing = TRUE)[1:50]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_50 <- adj_rsquared_individual[top_indices_50]
       
-      ##### now let's look at Y ~ X*M
-      # Initialize vectors to store R-squared values
-      rsquared_individual_xm = numeric(how_many_fac)
-      adj_rsquared_individual_xm = numeric(how_many_fac)
+      
+      
+      ## Y ~ X*M -- indiv
+      rsquared_individual_xm = numeric(length(top_indices_50))
+      adj_rsquared_individual_xm = numeric(length(top_indices_50))
       # Loop through each M variable
-      for (i in 1:how_many_fac) {
+      for (i in 1:length(top_indices_50)) {
+        factor_index <- top_indices_50[i]
         # Define the formula for the linear model
         #formula = as.formula(paste("Average_Y ~ Average_X + ", paste0("Average_M", i)))
-        formula = as.formula(paste("Average_Y ~ Average_X*", paste0("Average_M", i)))
+        formula = as.formula(paste("Average_Y ~ Average_X*", paste0("Average_M", factor_index)))
         # Fit the linear model
         model = lm(formula, data = average_values_by_Item)
         # Extract and store the R-squared value
         rsquared_individual_xm[i] = summary(model)$r.squared
         adj_rsquared_individual_xm[i] = summary(model)$adj.r.squared
         interaction_output_df_top_50_indiv <- rbind(interaction_output_df_top_50_indiv, data.frame(
-                                          tbl = tbl,
-                                          mem = mem,
-                                          ROI = ROI,
-                                          num_factors = i,
-                                          indiv_rsq = rsquared_individual_xm[i],
-                                          indiv_adj_rsq =  adj_rsquared_individual_xm[i]))
+                                                tbl = tbl,
+                                                mem = mem,
+                                                ROI = ROI,
+                                                num_factors = factor_index,
+                                                indiv_rsq = rsquared_individual_xm[i],
+                                                indiv_adj_rsq =  adj_rsquared_individual_xm[i]))
         
       }
-      # 
-      # Get indices of the top 10 R^2 values
-      top_indices_xm_50 <- order(adj_rsquared_individual_xm, decreasing = TRUE)[1:50]
-
-      # Initialize vectors to store cumulative R-squared and adjusted R-squared values
-      cumulative_rsquared_xm <- numeric(length(top_indices_xm_50))
-      cumulative_adj_rsquared_xm <- numeric(length(top_indices_xm_50))
+      
+      
+      ## Y ~ X*M -- cumulative
+      cumulative_rsquared_xm <- numeric(length(top_indices_50))
+      cumulative_adj_rsquared_xm <- numeric(length(top_indices_50))
       # Loop to calculate cumulative R-squared values using top factors
-      for (i in 1:length(top_indices_xm_50)) {
+      for (i in 1:length(top_indices_50)) {
         # Select the top factors up to the i-th
-        selected_factors <- top_indices_xm_50[1:i]
+        selected_factors <- top_indices_50[1:i]
         # Create the model formula by including the selected top factors cumulatively
         #formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
         #cumulative_formula <- as.formula(paste("Average_Y ~ Average_X + ", formula_terms))
@@ -724,47 +733,15 @@ for (tbl in tbl_names) {
         # cumulative_adj_rsquared_xm[i] <- summary(cumulative_model)$adj.r.squared
         cumulative_rsquared_xm <- summary(cumulative_model)$r.squared
         cumulative_adj_rsquared_xm <- summary(cumulative_model)$adj.r.squared
-
+        
         interaction_output_df_top_50 <- rbind(interaction_output_df_top_50, data.frame(tbl = tbl,
                                                                                        mem = mem,
                                                                                        ROI = ROI,
-                                                                                       hemisphere = hemisphere,
                                                                                        num_factors = i,
                                                                                        cumulative_rsq = cumulative_rsquared_xm,
                                                                                        cumulative_adj_rsq = cumulative_adj_rsquared_xm))
-
+        
       }
-
-      # # Get indices of the top 10 R^2 values
-      # top_indices_xm_100 <- order(adj_rsquared_individual_xm, decreasing = TRUE)[1:100]
-      # 
-      # # Initialize vectors to store cumulative R-squared and adjusted R-squared values
-      # cumulative_rsquared_xm <- numeric(length(top_indices_xm_100))
-      # cumulative_adj_rsquared_xm <- numeric(length(top_indices_xm_100))
-      # # Loop to calculate cumulative R-squared values using top factors
-      # for (i in 1:length(top_indices_xm_100)) {
-      #   # Select the top factors up to the i-th
-      #   selected_factors <- top_indices_xm_100[1:i]
-      #   # Create the model formula by including the selected top factors cumulatively
-      #   formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
-      #   cumulative_formula <- as.formula(paste("Average_Y ~ Average_X + ", formula_terms))
-      #   # Fit the linear model with the cumulative set of factors
-      #   cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
-      #   # Extract and store the cumulative R-squared and adjusted R-squared values
-      #   # cumulative_rsquared_xm[i] <- summary(cumulative_model)$r.squared
-      #   # cumulative_adj_rsquared_xm[i] <- summary(cumulative_model)$adj.r.squared
-      #   cumulative_rsquared_xm <- summary(cumulative_model)$r.squared
-      #   cumulative_adj_rsquared_xm <- summary(cumulative_model)$adj.r.squared
-      #   
-      #   interaction_output_df_top_100 <- rbind(interaction_output_df_top_100, data.frame(tbl = tbl,
-      #                                                                                  mem = mem,
-      #                                                                                  ROI = ROI,
-      #                                                                                  hemisphere = hemisphere,
-      #                                                                                  num_factors = i,
-      #                                                                                  cumulative_rsq = cumulative_rsquared_xm,
-      #                                                                                  cumulative_adj_rsq = cumulative_adj_rsquared_xm))
-      #   
-      # }
       
       # # Initialize vectors to store R-squared values for cumulative models
       # rsquared_cumulative = numeric(how_many_fac)
@@ -881,7 +858,9 @@ for (tbl in tbl_names) {
       
     toc()
     } #end ROI_name_variable
+    print(paste("finished mem:",mem))
   } #end memType
+  print(paste("finished tbl:",tbl))
 } #end tbl_names
 
 
@@ -920,258 +899,258 @@ saveWorkbook(wb, file = file_path, overwrite = TRUE)  # Save the workbook
 
 
 
-
-# Load the existing workbook
-wb <- loadWorkbook(file_path)
-
-removeWorksheet(wb, "mem_output_df_all")
-addWorksheet(wb, "mem_output_df_all")
-# Write the updated data frame to the new worksheet
-writeData(wb, "mem_output_df_all", mem_output_df_all)
-# Save the workbook, overwriting the existing file
-saveWorkbook(wb, file = file_path, overwrite = TRUE)
-
-
-#colnames(output_df) <- c('tbl','mem','ROI','hemisphere','num_factors','cumulative_rsq')  
-
-# write to spreadsheet
-filename <- '/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/encycl_cumulative_varExplained.xlsx'
-write_xlsx(output_df, filename)
-
-# write to spreadsheet
-filename <- '/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/encycl_cumulative_varExplained_interaction.xlsx'
-write_xlsx(interaction_output_df, filename)
-
-# Subset output_df to include only rows where num_factors equals 228
-max_factors_df <- output_df %>% 
-  filter(num_factors == 228)
-
-#filename <- '/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/encycl_cumulative_varExplained_maxFactors.xlsx'
-#write_xlsx(max_factors_df, filename)
-
-max_factors_df <- interaction_output_df %>% 
-  filter(num_factors == 228)
-
-ggplot(max_factors_df, aes(x = ROI, y = cumulative_rsq, fill = ROI)) +
-  geom_col() +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate x-axis labels for better readability
-  labs(title = "Cumulative Rsq by ROI ",
-       x = "ROI",
-       y = "Cumulative Rsq")
-
-# Initialize vectors to store R-squared values
-rsquared_individual = numeric(how_many_fac)
-# Loop through each M variable
-for (i in 1:how_many_fac) {
-  # Define the formula for the linear model
-  formula = as.formula(paste("Average_Y ~ ", paste0("Average_M", i)))
-  # Fit the linear model
-  model = lm(formula, data = average_values_by_Item)
-  # Extract and store the R-squared value
-  rsquared_individual[i] = summary(model)$r.squared
-}
-
-# Initialize vectors to store R-squared values for cumulative models
-rsquared_cumulative = numeric(how_many_fac)
-
-# Loop through each set of M variables
-for (i in 1:how_many_fac) {
-  # Define the formula including all M variables up to the current iteration
-  m_vars = paste0("Average_M", 1:i, collapse = " + ")
-  formula = as.formula(paste("Average_Y ~ ", m_vars))
-  # Fit the linear model
-  model = lm(formula, data = average_values_by_Item)
-  # Extract and store the R-squared value
-  rsquared_cumulative[i] = summary(model)$r.squared
-}
-
-# Assuming 'df' is your data frame
-df <- data.frame(M = paste0("F", 1:how_many_fac), R_squared = rsquared_individual)
-# Convert 'M' to a factor and reorder based on the numeric part of the M values
-df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
-ggplot(df, aes(x = M, y = R_squared)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
-        panel.background = element_blank(),  # Remove grey background
-        panel.grid.major = element_blank(),  # Remove major gridlines
-        panel.grid.minor = element_blank(),  # Remove minor gridlines
-        axis.line = element_line(colour = "black")) +  # Add axis lines
-  labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
-
-# Assuming 'df' is your data frame
-df <- data.frame(M = paste0("F", 1:how_many_fac), R_squared = rsquared_cumulative)
-# Convert 'M' to a factor and reorder based on the numeric part of the M values
-df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
-ggplot(df, aes(x = M, y = R_squared, group = 1)) +  # Add 'group = 1' to treat all points as part of one group
-  geom_bar(stat = "identity", fill = "steelblue") +  # Plot the bars
-  #geom_point(color = "grey", size = 3) +  # Add points on top of the bars
-  #geom_line(color = "black", linewidth = 1) +  # Connect the points with a line, using 'linewidth' for line thickness
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
-        panel.background = element_blank(),  # Remove grey background
-        panel.grid.major = element_blank(),  # Remove major gridlines
-        panel.grid.minor = element_blank(),  # Remove minor gridlines
-        axis.line = element_line(colour = "black")) +  # Add axis lines
-  labs(title = "Cumulative Variance Explained by Factors", x = "Factors", y = "R-squared")
-
-
-##### let's use the data frames as output so I don't have to go back and change all the variables
-## Y ~ M
-# output_df_all / top_50 / top_8 
-
-## Y ~ X*M
-# interaction_output_df_all / top_xm_50 / top_xm_8 
-
-## X ~ M 
-# mem_output_df_all / top_x_50 / top_x_8 
-df <- data.frame(M = paste0("F", top_indices_x_8), R_squared = mem_output_df_top_8$cumulative_adj_rsq[1:8])
-# Convert 'M' to a factor and reorder based on the numeric part of the M values
-#df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
-df$M <- factor(df$M, levels = paste0("F", top_indices_x_8))
-ggplot(df, aes(x = M, y = R_squared)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
-        panel.background = element_blank(),  # Remove grey background
-        panel.grid.major = element_blank(),  # Remove major gridlines
-        panel.grid.minor = element_blank(),  # Remove minor gridlines
-        axis.line = element_line(colour = "black")) +  # Add axis lines
-  labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
-
-df <- data.frame(M = paste0("F", top_indices_x_50), R_squared = mem_output_df_top_50$cumulative_adj_rsq)
-# Convert 'M' to a factor and reorder based on the numeric part of the M values
-#df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
-df$M <- factor(df$M, levels = paste0("F", top_indices_x_50))
-ggplot(df, aes(x = M, y = R_squared)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
-        panel.background = element_blank(),  # Remove grey background
-        panel.grid.major = element_blank(),  # Remove major gridlines
-        panel.grid.minor = element_blank(),  # Remove minor gridlines
-        axis.line = element_line(colour = "black")) +  # Add axis lines
-  labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
-
-df <- data.frame(M = paste0("F", 1:how_many_fac), R_squared = mem_output_df_all$cumulative_adj_rsq)
-# Convert 'M' to a factor and reorder based on the numeric part of the M values
-df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
-ggplot(df, aes(x = M, y = R_squared)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
-        panel.background = element_blank(),  # Remove grey background
-        panel.grid.major = element_blank(),  # Remove major gridlines
-        panel.grid.minor = element_blank(),  # Remove minor gridlines
-        axis.line = element_line(colour = "black")) +  # Add axis lines
-  labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
-
-df <- data.frame(M = paste0("F", top_indices_x_100), R_squared = mem_output_df_top_100$cumulative_adj_rsq)
-# Convert 'M' to a factor and reorder based on the numeric part of the M values
-#df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
-df$M <- factor(df$M, levels = paste0("F", top_indices_x_100))
-ggplot(df, aes(x = M, y = R_squared)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
-        panel.background = element_blank(),  # Remove grey background
-        panel.grid.major = element_blank(),  # Remove major gridlines
-        panel.grid.minor = element_blank(),  # Remove minor gridlines
-        axis.line = element_line(colour = "black")) +  # Add axis lines
-  labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
-
-
-#### investigate overfitting
-set.seed(123)  # For reproducibility
-split_index <- sample(1:nrow(average_values_by_Item), 0.7 * nrow(average_values_by_Item))  # 70% for training
-train_data <- average_values_by_Item[split_index, ]
-validation_data <- average_values_by_Item[-split_index, ]
-
-# Select the top 50 factors
-selected_factors <- top_indices_x_8
-# Create the model formula with all XX top factors
-formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
-cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
-
-# Fit the linear model with the full set of factors on the training data
-cumulative_model <- lm(cumulative_formula, data = train_data)
-
-# Predict on validation data and evaluate the model
-predictions <- predict(cumulative_model, newdata = validation_data)
-mse <- mean((validation_data$Average_X - predictions)^2)
-rmse <- sqrt(mse)
-
-# Print or store the evaluation metrics
-cat("MSE on validation data:", mse, "\n")
-# MSE on validation data: 4.031414e+58 
-cat("RMSE on validation data:", rmse, "\n")
-# RMSE on validation data: 2.007838e+29 
-
-#library(glmnet)
-
-# Prepare the matrix of predictors and the response vector
-x_train <- as.matrix(train_data[, top_indices_x_8])
-y_train <- train_data$Average_X
-
-x_validation <- as.matrix(validation_data[, top_indices_x_8])
-y_validation <- validation_data$Average_X
-
-# Fit LASSO model
-lasso_model <- glmnet(x_train, y_train, alpha = 1)  # alpha = 1 for LASSO
-
-# Determine the lambda that minimizes the cross-validation error
-cv_lasso <- cv.glmnet(x_train, y_train, alpha = 1)
-optimal_lambda <- cv_lasso$lambda.min
-
-# Predict on validation data using the optimal lambda
-predictions <- predict(lasso_model, newx = x_validation, s = optimal_lambda)
-
-# Calculate MSE and RMSE
-mse <- mean((y_validation - predictions)^2)
-rmse <- sqrt(mse)
-
-cat("MSE on validation data:", mse, "\n")
-# MSE on validation data: 1.787239e-05 
-cat("RMSE on validation data:", rmse, "\n")
-# RMSE on validation data: 0.004227575 
-
-# now let's get adjusted R2 from this corrected model
-# Compute R^2
-ss_res <- sum((y_validation - predictions)^2)
-ss_tot <- sum((y_validation - mean(y_validation))^2)
-r_squared <- 1 - ss_res / ss_tot
-
-# Determine the effective number of predictors (non-zero coefficients in LASSO model)
-effective_predictors <- sum(coef(lasso_model, s = optimal_lambda) != 0) - 1  # Subtract 1 to exclude intercept
-
-# Compute Adjusted R^2
-n <- length(y_validation)  # Number of observations in the validation set
-adjusted_r_squared <- 1 - (1 - r_squared) * ((n - 1) / (n - effective_predictors - 1))
-
-# Print Adjusted R^2
-cat("Adjusted R^2 on validation data:", adjusted_r_squared, "\n")
-
-# Assuming x_train, y_train, x_validation, and y_validation are already defined
-
-# Fit Ridge regression model using glmnet with alpha = 0
-ridge_model <- glmnet(x_train, y_train, alpha = 0)
-
-# Perform cross-validation to find the optimal lambda value
-cv_ridge <- cv.glmnet(x_train, y_train, alpha = 0)
-
-# Extract the optimal lambda value
-optimal_lambda_ridge <- cv_ridge$lambda.min
-
-# Predict on the validation set using the optimal lambda
-predictions_ridge <- predict(ridge_model, newx = x_validation, s = optimal_lambda_ridge)
-
-# Compute MSE and RMSE
-mse_ridge <- mean((y_validation - predictions_ridge)^2)
-rmse_ridge <- sqrt(mse_ridge)
-
-# Compute R^2
-ss_res_ridge <- sum((y_validation - predictions_ridge)^2)
-ss_tot_ridge <- sum((y_validation - mean(y_validation))^2)
-r_squared_ridge <- 1 - ss_res_ridge / ss_tot_ridge
-
-# Compute Adjusted R^2
-n <- length(y_validation)  # Number of observations in the validation set
-p <- sum(coef(ridge_model, s = optimal_lambda_ridge) != 0) - 1  # Effective number of predictors, excluding intercept
-adjusted_r_squared_ridge <- 1 - (1 - r_squared_ridge) * ((n - 1) / (n - p - 1))
-
-
+# 
+# # Load the existing workbook
+# wb <- loadWorkbook(file_path)
+# 
+# removeWorksheet(wb, "mem_output_df_all")
+# addWorksheet(wb, "mem_output_df_all")
+# # Write the updated data frame to the new worksheet
+# writeData(wb, "mem_output_df_all", mem_output_df_all)
+# # Save the workbook, overwriting the existing file
+# saveWorkbook(wb, file = file_path, overwrite = TRUE)
+# 
+# 
+# #colnames(output_df) <- c('tbl','mem','ROI','hemisphere','num_factors','cumulative_rsq')  
+# 
+# # write to spreadsheet
+# filename <- '/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/encycl_cumulative_varExplained.xlsx'
+# write_xlsx(output_df, filename)
+# 
+# # write to spreadsheet
+# filename <- '/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/encycl_cumulative_varExplained_interaction.xlsx'
+# write_xlsx(interaction_output_df, filename)
+# 
+# # Subset output_df to include only rows where num_factors equals 228
+# max_factors_df <- output_df %>% 
+#   filter(num_factors == 228)
+# 
+# #filename <- '/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/encycl_cumulative_varExplained_maxFactors.xlsx'
+# #write_xlsx(max_factors_df, filename)
+# 
+# max_factors_df <- interaction_output_df %>% 
+#   filter(num_factors == 228)
+# 
+# ggplot(max_factors_df, aes(x = ROI, y = cumulative_rsq, fill = ROI)) +
+#   geom_col() +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate x-axis labels for better readability
+#   labs(title = "Cumulative Rsq by ROI ",
+#        x = "ROI",
+#        y = "Cumulative Rsq")
+# 
+# # Initialize vectors to store R-squared values
+# rsquared_individual = numeric(how_many_fac)
+# # Loop through each M variable
+# for (i in 1:how_many_fac) {
+#   # Define the formula for the linear model
+#   formula = as.formula(paste("Average_Y ~ ", paste0("Average_M", i)))
+#   # Fit the linear model
+#   model = lm(formula, data = average_values_by_Item)
+#   # Extract and store the R-squared value
+#   rsquared_individual[i] = summary(model)$r.squared
+# }
+# 
+# # Initialize vectors to store R-squared values for cumulative models
+# rsquared_cumulative = numeric(how_many_fac)
+# 
+# # Loop through each set of M variables
+# for (i in 1:how_many_fac) {
+#   # Define the formula including all M variables up to the current iteration
+#   m_vars = paste0("Average_M", 1:i, collapse = " + ")
+#   formula = as.formula(paste("Average_Y ~ ", m_vars))
+#   # Fit the linear model
+#   model = lm(formula, data = average_values_by_Item)
+#   # Extract and store the R-squared value
+#   rsquared_cumulative[i] = summary(model)$r.squared
+# }
+# 
+# # Assuming 'df' is your data frame
+# df <- data.frame(M = paste0("F", 1:how_many_fac), R_squared = rsquared_individual)
+# # Convert 'M' to a factor and reorder based on the numeric part of the M values
+# df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
+# ggplot(df, aes(x = M, y = R_squared)) +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
+#         panel.background = element_blank(),  # Remove grey background
+#         panel.grid.major = element_blank(),  # Remove major gridlines
+#         panel.grid.minor = element_blank(),  # Remove minor gridlines
+#         axis.line = element_line(colour = "black")) +  # Add axis lines
+#   labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
+# 
+# # Assuming 'df' is your data frame
+# df <- data.frame(M = paste0("F", 1:how_many_fac), R_squared = rsquared_cumulative)
+# # Convert 'M' to a factor and reorder based on the numeric part of the M values
+# df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
+# ggplot(df, aes(x = M, y = R_squared, group = 1)) +  # Add 'group = 1' to treat all points as part of one group
+#   geom_bar(stat = "identity", fill = "steelblue") +  # Plot the bars
+#   #geom_point(color = "grey", size = 3) +  # Add points on top of the bars
+#   #geom_line(color = "black", linewidth = 1) +  # Connect the points with a line, using 'linewidth' for line thickness
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
+#         panel.background = element_blank(),  # Remove grey background
+#         panel.grid.major = element_blank(),  # Remove major gridlines
+#         panel.grid.minor = element_blank(),  # Remove minor gridlines
+#         axis.line = element_line(colour = "black")) +  # Add axis lines
+#   labs(title = "Cumulative Variance Explained by Factors", x = "Factors", y = "R-squared")
+# 
+# 
+# ##### let's use the data frames as output so I don't have to go back and change all the variables
+# ## Y ~ M
+# # output_df_all / top_50 / top_8 
+# 
+# ## Y ~ X*M
+# # interaction_output_df_all / top_xm_50 / top_xm_8 
+# 
+# ## X ~ M 
+# # mem_output_df_all / top_x_50 / top_x_8 
+# df <- data.frame(M = paste0("F", top_indices_x_8), R_squared = mem_output_df_top_8$cumulative_adj_rsq[1:8])
+# # Convert 'M' to a factor and reorder based on the numeric part of the M values
+# #df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
+# df$M <- factor(df$M, levels = paste0("F", top_indices_x_8))
+# ggplot(df, aes(x = M, y = R_squared)) +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
+#         panel.background = element_blank(),  # Remove grey background
+#         panel.grid.major = element_blank(),  # Remove major gridlines
+#         panel.grid.minor = element_blank(),  # Remove minor gridlines
+#         axis.line = element_line(colour = "black")) +  # Add axis lines
+#   labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
+# 
+# df <- data.frame(M = paste0("F", top_indices_x_50), R_squared = mem_output_df_top_50$cumulative_adj_rsq)
+# # Convert 'M' to a factor and reorder based on the numeric part of the M values
+# #df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
+# df$M <- factor(df$M, levels = paste0("F", top_indices_x_50))
+# ggplot(df, aes(x = M, y = R_squared)) +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
+#         panel.background = element_blank(),  # Remove grey background
+#         panel.grid.major = element_blank(),  # Remove major gridlines
+#         panel.grid.minor = element_blank(),  # Remove minor gridlines
+#         axis.line = element_line(colour = "black")) +  # Add axis lines
+#   labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
+# 
+# df <- data.frame(M = paste0("F", 1:how_many_fac), R_squared = mem_output_df_all$cumulative_adj_rsq)
+# # Convert 'M' to a factor and reorder based on the numeric part of the M values
+# df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
+# ggplot(df, aes(x = M, y = R_squared)) +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
+#         panel.background = element_blank(),  # Remove grey background
+#         panel.grid.major = element_blank(),  # Remove major gridlines
+#         panel.grid.minor = element_blank(),  # Remove minor gridlines
+#         axis.line = element_line(colour = "black")) +  # Add axis lines
+#   labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
+# 
+# df <- data.frame(M = paste0("F", top_indices_x_100), R_squared = mem_output_df_top_100$cumulative_adj_rsq)
+# # Convert 'M' to a factor and reorder based on the numeric part of the M values
+# #df$M <- factor(df$M, levels = df$M[order(as.numeric(gsub("F", "", df$M)))])
+# df$M <- factor(df$M, levels = paste0("F", top_indices_x_100))
+# ggplot(df, aes(x = M, y = R_squared)) +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),  # Rotate x-axis labels
+#         panel.background = element_blank(),  # Remove grey background
+#         panel.grid.major = element_blank(),  # Remove major gridlines
+#         panel.grid.minor = element_blank(),  # Remove minor gridlines
+#         axis.line = element_line(colour = "black")) +  # Add axis lines
+#   labs(title = "Variance Explained by Each Factor", x = "Factors", y = "R-squared")
+# 
+# 
+# #### investigate overfitting
+# set.seed(123)  # For reproducibility
+# split_index <- sample(1:nrow(average_values_by_Item), 0.7 * nrow(average_values_by_Item))  # 70% for training
+# train_data <- average_values_by_Item[split_index, ]
+# validation_data <- average_values_by_Item[-split_index, ]
+# 
+# # Select the top 50 factors
+# selected_factors <- top_indices_x_8
+# # Create the model formula with all XX top factors
+# formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
+# cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
+# 
+# # Fit the linear model with the full set of factors on the training data
+# cumulative_model <- lm(cumulative_formula, data = train_data)
+# 
+# # Predict on validation data and evaluate the model
+# predictions <- predict(cumulative_model, newdata = validation_data)
+# mse <- mean((validation_data$Average_X - predictions)^2)
+# rmse <- sqrt(mse)
+# 
+# # Print or store the evaluation metrics
+# cat("MSE on validation data:", mse, "\n")
+# # MSE on validation data: 4.031414e+58 
+# cat("RMSE on validation data:", rmse, "\n")
+# # RMSE on validation data: 2.007838e+29 
+# 
+# #library(glmnet)
+# 
+# # Prepare the matrix of predictors and the response vector
+# x_train <- as.matrix(train_data[, top_indices_x_8])
+# y_train <- train_data$Average_X
+# 
+# x_validation <- as.matrix(validation_data[, top_indices_x_8])
+# y_validation <- validation_data$Average_X
+# 
+# # Fit LASSO model
+# lasso_model <- glmnet(x_train, y_train, alpha = 1)  # alpha = 1 for LASSO
+# 
+# # Determine the lambda that minimizes the cross-validation error
+# cv_lasso <- cv.glmnet(x_train, y_train, alpha = 1)
+# optimal_lambda <- cv_lasso$lambda.min
+# 
+# # Predict on validation data using the optimal lambda
+# predictions <- predict(lasso_model, newx = x_validation, s = optimal_lambda)
+# 
+# # Calculate MSE and RMSE
+# mse <- mean((y_validation - predictions)^2)
+# rmse <- sqrt(mse)
+# 
+# cat("MSE on validation data:", mse, "\n")
+# # MSE on validation data: 1.787239e-05 
+# cat("RMSE on validation data:", rmse, "\n")
+# # RMSE on validation data: 0.004227575 
+# 
+# # now let's get adjusted R2 from this corrected model
+# # Compute R^2
+# ss_res <- sum((y_validation - predictions)^2)
+# ss_tot <- sum((y_validation - mean(y_validation))^2)
+# r_squared <- 1 - ss_res / ss_tot
+# 
+# # Determine the effective number of predictors (non-zero coefficients in LASSO model)
+# effective_predictors <- sum(coef(lasso_model, s = optimal_lambda) != 0) - 1  # Subtract 1 to exclude intercept
+# 
+# # Compute Adjusted R^2
+# n <- length(y_validation)  # Number of observations in the validation set
+# adjusted_r_squared <- 1 - (1 - r_squared) * ((n - 1) / (n - effective_predictors - 1))
+# 
+# # Print Adjusted R^2
+# cat("Adjusted R^2 on validation data:", adjusted_r_squared, "\n")
+# 
+# # Assuming x_train, y_train, x_validation, and y_validation are already defined
+# 
+# # Fit Ridge regression model using glmnet with alpha = 0
+# ridge_model <- glmnet(x_train, y_train, alpha = 0)
+# 
+# # Perform cross-validation to find the optimal lambda value
+# cv_ridge <- cv.glmnet(x_train, y_train, alpha = 0)
+# 
+# # Extract the optimal lambda value
+# optimal_lambda_ridge <- cv_ridge$lambda.min
+# 
+# # Predict on the validation set using the optimal lambda
+# predictions_ridge <- predict(ridge_model, newx = x_validation, s = optimal_lambda_ridge)
+# 
+# # Compute MSE and RMSE
+# mse_ridge <- mean((y_validation - predictions_ridge)^2)
+# rmse_ridge <- sqrt(mse_ridge)
+# 
+# # Compute R^2
+# ss_res_ridge <- sum((y_validation - predictions_ridge)^2)
+# ss_tot_ridge <- sum((y_validation - mean(y_validation))^2)
+# r_squared_ridge <- 1 - ss_res_ridge / ss_tot_ridge
+# 
+# # Compute Adjusted R^2
+# n <- length(y_validation)  # Number of observations in the validation set
+# p <- sum(coef(ridge_model, s = optimal_lambda_ridge) != 0) - 1  # Effective number of predictors, excluding intercept
+# adjusted_r_squared_ridge <- 1 - (1 - r_squared_ridge) * ((n - 1) / (n - p - 1))
+# 
+# 
