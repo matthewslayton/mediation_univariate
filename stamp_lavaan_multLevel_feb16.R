@@ -70,7 +70,7 @@ tbl_names <- c("encycl","vis","fcn")
 memType <- c("lexical_CR","visual_CR","lexical_HR","visual_HR","lexical_FAR","visual_FAR")
 
 #indirectEffects_output_df <- data.frame(tbl=character(),mem=character(),ROI=character(),hemisphere=character(),sigPred=character(),b_type=character(),a_path=numeric(),b_path=numeric(),c_path=numeric(),indirectEffect=numeric(),LL=numeric(), UL=numeric(), significant=logical())
-mediation_output_df <- data.frame(tbl=character(),mem=character(),ROI=character(),resultType=character(),estimate=numeric(),std_err=numeric(),zval=numeric(),pval=numeric(),ci_lower=numeric(),ci_upper=numeric()) #could replace character() with factor()for (ROI_name in ROI_name_variable) {
+mediation_output_df <- data.frame(tbl=character(),mem=character(),ROI=character(),resultType=character(),factorNumber=character(),estimate=numeric(),std_err=numeric(),zval=numeric(),pval=numeric(),ci_lower=numeric(),ci_upper=numeric()) #could replace character() with factor()for (ROI_name in ROI_name_variable) {
 
 # tbl <- "encycl"
 # mem <- "lexical_CR"
@@ -335,6 +335,7 @@ for (tbl in tbl_names) {
         
         
         a1 <- c(tbl, mem, ROI, "a1",
+                a_rows[1,]$lhs,      # factor number
                 a_rows[1,]$est,      # Estimate for a1
                 a_rows[1,]$se,       # Standard Error for a1
                 a_rows[1,]$z,        # Z-value for a1
@@ -342,6 +343,7 @@ for (tbl in tbl_names) {
                 a_rows[1,]$ci.lower, # Lower bound of the confidence interval for a1
                 a_rows[1,]$ci.upper) # Upper bound of the confidence interval for a1
         a2 <- c(tbl, mem, ROI, "a2",
+                a_rows[2,]$lhs,
                 a_rows[2,]$est,
                 a_rows[2,]$se,
                 a_rows[2,]$z,
@@ -349,6 +351,7 @@ for (tbl in tbl_names) {
                 a_rows[2,]$ci.lower,
                 a_rows[2,]$ci.upper)
         a3 <- c(tbl, mem, ROI, "a3",
+                a_rows[3,]$lhs,
                 a_rows[3,]$est,
                 a_rows[3,]$se,
                 a_rows[3,]$z,
@@ -356,6 +359,7 @@ for (tbl in tbl_names) {
                 a_rows[3,]$ci.lower,
                 a_rows[3,]$ci.upper)
         a4 <- c(tbl, mem, ROI, "a4",
+                a_rows[4,]$lhs,
                 a_rows[4,]$est,
                 a_rows[4,]$se,
                 a_rows[4,]$z,
@@ -363,6 +367,7 @@ for (tbl in tbl_names) {
                 a_rows[4,]$ci.lower,
                 a_rows[4,]$ci.upper)
         a5 <- c(tbl, mem, ROI, "a5",
+                a_rows[5,]$lhs,
                 a_rows[5,]$est,
                 a_rows[5,]$se,
                 a_rows[5,]$z,
@@ -377,6 +382,7 @@ for (tbl in tbl_names) {
         # b5_row <- pe_results[pe_results$lhs == "Y" & grepl("M5", pe_results$rhs), ]
         # 
         b1 <- c(tbl, mem, ROI, "b1",
+                b_rows[1,]$rhs,      # factor number
                 b_rows[1,]$est,      # Estimate for b1
                 b_rows[1,]$se,       # Standard Error for b1
                 b_rows[1,]$z,        # Z-value for b1
@@ -384,6 +390,7 @@ for (tbl in tbl_names) {
                 b_rows[1,]$ci.lower, # Lower bound of the confidence interval for b1
                 b_rows[1,]$ci.upper) # Upper bound of the confidence interval for b1
         b2 <- c(tbl, mem, ROI, "b2",
+                b_rows[2,]$rhs,
                 b_rows[2,]$est,
                 b_rows[2,]$se,
                 b_rows[2,]$z,
@@ -391,6 +398,7 @@ for (tbl in tbl_names) {
                 b_rows[2,]$ci.lower,
                 b_rows[2,]$ci.upper)
         b3 <- c(tbl, mem, ROI, "b3",
+                b_rows[3,]$rhs,
                 b_rows[3,]$est,
                 b_rows[3,]$se,
                 b_rows[3,]$z,
@@ -398,6 +406,7 @@ for (tbl in tbl_names) {
                 b_rows[3,]$ci.lower,
                 b_rows[3,]$ci.upper)
         b4 <- c(tbl, mem, ROI, "b4",
+                b_rows[4,]$rhs,
                 b_rows[4,]$est,
                 b_rows[4,]$se,
                 b_rows[4,]$z,
@@ -405,6 +414,7 @@ for (tbl in tbl_names) {
                 b_rows[4,]$ci.lower,
                 b_rows[4,]$ci.upper)
         b5 <- c(tbl, mem, ROI, "b5",
+                b_rows[5,]$rhs,
                 b_rows[5,]$est,
                 b_rows[5,]$se,
                 b_rows[5,]$z,
@@ -417,6 +427,7 @@ for (tbl in tbl_names) {
         
         # Extract the relevant information for the c path
         c_path <- c(tbl, mem, ROI, "c",
+                    NA,            # something to put in the factor number column
                     c_row$est,      # Estimate for the c path
                     c_row$se,       # Standard Error for the c path
                     c_row$z,        # Z-value for the c path
@@ -429,17 +440,31 @@ for (tbl in tbl_names) {
           # Identify the row for each indirect effect based on the label
           indirect_row <- pe_results[pe_results$label == paste("ab", i, sep=""), ]
           
-          # Extract the relevant information for each indirect effect
-          indirect_effect <- c(tbl, mem, ROI, paste("ab", i, sep=""),
+          if(a_rows[i,]$lhs == b_rows[i,]$rhs) {
+            mediator_value <- a_rows[i,]$lhs  # or b_rows[1,]$rhs, since they match
+            # Extract the relevant information for each indirect effect
+            indirect_effect <- c(tbl, mem, ROI, paste("ab", i, sep=""),
+                               mediator_value,                         # placeholder for factor number column
                                indirect_row$est,      # Estimate for the indirect effect
                                indirect_row$se,       # Standard Error for the indirect effect
                                indirect_row$z,        # Z-value for the indirect effect
                                indirect_row$pvalue,   # P-value for the indirect effect
                                indirect_row$ci.lower, # Lower bound of the CI for the indirect effect
                                indirect_row$ci.upper) # Upper bound of the CI for the indirect effect
-          
+          } else {
+            indirect_effect <- c(tbl, mem, ROI, paste("ab", i, sep=""),
+                               NA,                         # placeholder for factor number column
+                               indirect_row$est,      # Estimate for the indirect effect
+                               indirect_row$se,       # Standard Error for the indirect effect
+                               indirect_row$z,        # Z-value for the indirect effect
+                               indirect_row$pvalue,   # P-value for the indirect effect
+                               indirect_row$ci.lower, # Lower bound of the CI for the indirect effect
+                               indirect_row$ci.upper) # Upper bound of the CI for the indirect effect
+            
+          }
           # Store the extracted indirect effect in the list
           indirect_estimates[[i]] <- indirect_effect
+          # Extract the relevant information for each indirect effect
         }
         
         # Combine all indirect effects into a matrix for easier binding with a, b, and c paths later
@@ -448,27 +473,29 @@ for (tbl in tbl_names) {
         # Extract the row for totalIndirect effect
         totalIndirect_row <- pe_results[pe_results$label == "totalIndirect", ]
         
-        # Extract the relevant information for totalIndirect
+        # Add the mediator values that were used for the individual a-paths and b-paths
+        unique_mediators <- c(a_rows[1,]$lhs,a_rows[2,]$lhs,a_rows[3,]$lhs,a_rows[4,]$lhs,a_rows[5,]$lhs)
         totalIndirect <- c(tbl, mem, ROI, "totalIndirect",
-                           totalIndirect_row$est,      # Estimate for totalIndirect
-                           totalIndirect_row$se,       # Standard Error for totalIndirect
-                           totalIndirect_row$z,        # Z-value for totalIndirect
-                           totalIndirect_row$pvalue,   # P-value for totalIndirect
-                           totalIndirect_row$ci.lower, # Lower bound of the CI for totalIndirect
-                           totalIndirect_row$ci.upper) # Upper bound of the CI for totalIndirect
-        
+                             paste(unique(unique_mediators), collapse=", "),
+                             totalIndirect_row$est,      # Estimate for the indirect effect
+                             totalIndirect_row$se,       # Standard Error for the indirect effect
+                             totalIndirect_row$z,        # Z-value for the indirect effect
+                             totalIndirect_row$pvalue,   # P-value for the indirect effect
+                             totalIndirect_row$ci.lower, # Lower bound of the CI for the indirect effect
+                             totalIndirect_row$ci.upper) # Upper bound of the CI for the indirect effect
+         
         # Extract the row for totalEffect
         totalEffect_row <- pe_results[pe_results$label == "totalEffect", ]
         
         # Extract the relevant information for totalEffect
         totalEffect <- c(tbl, mem, ROI, "totalEffect",
+                         paste(unique(unique_mediators), collapse=", "),
                          totalEffect_row$est,      # Estimate for totalEffect
                          totalEffect_row$se,       # Standard Error for totalEffect
                          totalEffect_row$z,        # Z-value for totalEffect
                          totalEffect_row$pvalue,   # P-value for totalEffect
                          totalEffect_row$ci.lower, # Lower bound of the CI for totalEffect
                          totalEffect_row$ci.upper) # Upper bound of the CI for totalEffect
-        
         
         
         mediation_output_df <- rbind(mediation_output_df,b1,b2,b3,b4,b5,
@@ -481,12 +508,14 @@ for (tbl in tbl_names) {
       
       toc()
     } #end ROI_name_variable
+    print(paste("finished mem:",mem))
   } #end memType
+  print(paste("finished tbl:",tbl))
 } #end tbl_names
 
 # Loop through each row and add the 'significant' column based on CI values
 mediation_output_df$significant <- NA  #Initialize the column with NA values
-colnames(mediation_output_df) <- c('tbl','mem','ROI','resultType','estimate','std_err','zval','pval','ci_lower','ci_upper','significant')  
+colnames(mediation_output_df) <- c('tbl','mem','ROI','resultType','factorNumber','estimate','std_err','zval','pval','ci_lower','ci_upper','significant')  
 
 for (row in 1:nrow(mediation_output_df)) {
   # Check if the confidence interval excludes zero
