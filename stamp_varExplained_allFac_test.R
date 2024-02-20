@@ -523,6 +523,222 @@ for (tbl in tbl_names) {
       }
       
       
+      ### top 20
+      
+      ## X ~ M -- derive top 20
+      # Initialize vectors to store R-squared values
+      rsquared_individual = numeric(how_many_fac)
+      adj_rsquared_individual = numeric(how_many_fac)
+      # Loop through each M variable
+      for (i in 1:how_many_fac) {
+        # Define the formula for the linear model
+        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", i)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual[i] = summary(model)$r.squared
+        adj_rsquared_individual[i] = summary(model)$adj.r.squared
+      }
+      # Get indices of the top 10 individual R^2 values
+      top_indices_20 <- order(adj_rsquared_individual, decreasing = TRUE)[1:20]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_20 <- adj_rsquared_individual[top_indices_20]
+      
+      
+      ## X ~ M -- indiv
+      rsquared_individual_x = numeric(length(top_indices_20))
+      adj_rsquared_individual_x = numeric(length(top_indices_20))
+      # Loop through each M variable
+      for (i in 1:length(top_indices_20)) {
+        factor_index <- top_indices_20[i]
+        # Define the formula for the linear model
+        formula = as.formula(paste("Average_X ~ ", paste0("Average_M", factor_index)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual_x[i] = summary(model)$r.squared
+        adj_rsquared_individual_x[i] = summary(model)$adj.r.squared
+        
+        mem_output_df_top_20_indiv <- rbind(mem_output_df_top_20_indiv, data.frame(tbl = tbl,
+                                            mem = mem,
+                                            ROI = ROI,
+                                            num_factors = factor_index,
+                                            indiv_rsq =rsquared_individual_x[i],
+                                            indiv_adj_rsq =  adj_rsquared_individual_x[i]))
+      }
+      
+      
+      ## X ~ M -- cumulative
+      cumulative_rsquared_x <- numeric(length(top_indices_20))
+      cumulative_adj_rsquared_x <- numeric(length(top_indices_20))
+      # Loop to calculate cumulative R-squared values using top factors
+      for (i in 1:length(top_indices_20)) {
+        # Select the top factors up to the i-th
+        selected_factors <- top_indices_20[1:i]
+        # Create the model formula by including the selected top factors cumulatively
+        formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
+        cumulative_formula <- as.formula(paste("Average_X ~ ", formula_terms))
+        # Fit the linear model with the cumulative set of factors
+        cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
+        # Extract and store the cumulative R-squared and adjusted R-squared values
+        # cumulative_rsquared_x[i] <- summary(cumulative_model)$r.squared
+        # cumulative_adj_rsquared_x[i] <- summary(cumulative_model)$adj.r.squared
+        cumulative_rsquared_x <- summary(cumulative_model)$r.squared
+        cumulative_adj_rsquared_x <- summary(cumulative_model)$adj.r.squared
+        
+        mem_output_df_top_20 <- rbind(mem_output_df_top_20, data.frame(tbl = tbl,
+                                                                       mem = mem,
+                                                                       ROI = ROI,
+                                                                       num_factors = i,
+                                                                       cumulative_rsq = cumulative_rsquared_x,
+                                                                       cumulative_adj_rsq = cumulative_adj_rsquared_x))
+      }
+      
+      
+      
+      ## Y ~ M -- derive top
+      rsquared_individual = numeric(how_many_fac)
+      adj_rsquared_individual = numeric(how_many_fac)
+      # Loop through each M variable
+      for (i in 1:how_many_fac) {
+        # Define the formula for the linear model
+        formula = as.formula(paste("Average_Y ~ ", paste0("Average_M", i)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual[i] = summary(model)$r.squared
+        adj_rsquared_individual[i] = summary(model)$adj.r.squared
+      }
+      # 
+      # # Get indices of the top 10 R^2 values
+      top_indices_20 <- order(adj_rsquared_individual, decreasing = TRUE)[1:20]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_20 <- adj_rsquared_individual[top_indices_20]
+      
+      
+      ## Y ~ M -- indiv
+      rsquared_indiv <- numeric(length(top_indices_20))
+      adj_rsquared_indiv <- numeric(length(top_indices_20))
+      # Loop over the top_indices instead of 1:how_many_fac
+      for (i in seq_along(top_indices_20)) {
+        # Get the factor index from top_indices
+        factor_index <- top_indices_20[i]
+        # Define the formula for the linear model using the top factor
+        formula <- as.formula(paste("Average_Y ~ ", paste0("Average_M", factor_index)))
+        # Fit the linear model
+        model <- lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared and adjusted R-squared values
+        rsquared_indiv[i] <- summary(model)$r.squared
+        adj_rsquared_indiv[i] <- summary(model)$adj.r.squared
+        output_df_top_20_indiv <- rbind(output_df_top_20_indiv, data.frame(tbl = tbl,
+                                  mem = mem,
+                                  ROI = ROI,
+                                  num_factors = factor_index,
+                                  indiv_rsq = rsquared_indiv[i],
+                                  indiv_adj_rsq =  adj_rsquared_indiv[i]))
+      }
+      
+      ## Y ~ M -- cumulative
+      cumulative_rsquared <- numeric(length(top_indices_20))
+      cumulative_adj_rsquared <- numeric(length(top_indices_20))
+      # Loop to calculate cumulative R-squared values using top factors
+      for (i in 1:length(top_indices_20)) {
+        # Select the top factors up to the i-th
+        selected_factors <- top_indices_20[1:i]
+        # Create the model formula by including the selected top factors cumulatively
+        formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
+        cumulative_formula <- as.formula(paste("Average_Y ~ ", formula_terms))
+        # Fit the linear model with the cumulative set of factors
+        cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
+        # Extract and store the cumulative R-squared and adjusted R-squared values
+        # cumulative_rsquared[i] <- summary(cumulative_model)$r.squared
+        # cumulative_adj_rsquared[i] <- summary(cumulative_model)$adj.r.squared
+        cumulative_rsquared <- summary(cumulative_model)$r.squared
+        cumulative_adj_rsquared <- summary(cumulative_model)$adj.r.squared
+        
+        output_df_top_20 <- rbind(output_df_top_20, data.frame(tbl = tbl,
+                                                               mem = mem,
+                                                               ROI = ROI,
+                                                               num_factors = i,
+                                                               cumulative_rsq = cumulative_rsquared ,
+                                                               cumulative_adj_rsq = cumulative_adj_rsquared))
+      }
+      
+      ## Y ~ X*M -- derive top 20
+      rsquared_individual = numeric(how_many_fac)
+      adj_rsquared_individual = numeric(how_many_fac)
+      # Loop through each M variable
+      for (i in 1:how_many_fac) {
+        # Define the formula for the linear model
+        formula = as.formula(paste("Average_Y ~ Average_X*", paste0("Average_M", i)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual[i] = summary(model)$r.squared
+        adj_rsquared_individual[i] = summary(model)$adj.r.squared
+      }
+      # 
+      # # Get indices of the top 10 R^2 values
+      top_indices_20 <- order(adj_rsquared_individual, decreasing = TRUE)[1:20]
+      # Extract the top 10 R^2 values using the indices
+      top_rsq_values_20 <- adj_rsquared_individual[top_indices_20]
+      
+      
+      
+      ## Y ~ X*M -- indiv
+      rsquared_individual_xm = numeric(length(top_indices_20))
+      adj_rsquared_individual_xm = numeric(length(top_indices_20))
+      # Loop through each M variable
+      for (i in 1:length(top_indices_20)) {
+        factor_index <- top_indices_20[i]
+        # Define the formula for the linear model
+        #formula = as.formula(paste("Average_Y ~ Average_X + ", paste0("Average_M", i)))
+        formula = as.formula(paste("Average_Y ~ Average_X*", paste0("Average_M", factor_index)))
+        # Fit the linear model
+        model = lm(formula, data = average_values_by_Item)
+        # Extract and store the R-squared value
+        rsquared_individual_xm[i] = summary(model)$r.squared
+        adj_rsquared_individual_xm[i] = summary(model)$adj.r.squared
+        interaction_output_df_top_20_indiv <- rbind(interaction_output_df_top_20_indiv, data.frame(tbl = tbl,
+                                              mem = mem,
+                                              ROI = ROI,
+                                              num_factors = factor_index,
+                                              indiv_rsq = rsquared_individual_xm[i],
+                                              indiv_adj_rsq =  adj_rsquared_individual_xm[i]))
+        
+      }
+      
+      
+      ## Y ~ X*M -- cumulative
+      cumulative_rsquared_xm <- numeric(length(top_indices_20))
+      cumulative_adj_rsquared_xm <- numeric(length(top_indices_20))
+      # Loop to calculate cumulative R-squared values using top factors
+      for (i in 1:length(top_indices_20)) {
+        # Select the top factors up to the i-th
+        selected_factors <- top_indices_20[1:i]
+        # Create the model formula by including the selected top factors cumulatively
+        #formula_terms <- paste(paste0("Average_M", selected_factors), collapse=" + ")
+        #cumulative_formula <- as.formula(paste("Average_Y ~ Average_X + ", formula_terms))
+        formula_terms <- paste(paste0("Average_X*Average_M", selected_factors), collapse=" + ")
+        # Combine the predictor terms with the dependent variable to form the complete formula
+        cumulative_formula <- paste("Average_Y ~", formula_terms)
+        # Fit the linear model with the cumulative set of factors
+        cumulative_model <- lm(cumulative_formula, data = average_values_by_Item)
+        # Extract and store the cumulative R-squared and adjusted R-squared values
+        # cumulative_rsquared_xm[i] <- summary(cumulative_model)$r.squared
+        # cumulative_adj_rsquared_xm[i] <- summary(cumulative_model)$adj.r.squared
+        cumulative_rsquared_xm <- summary(cumulative_model)$r.squared
+        cumulative_adj_rsquared_xm <- summary(cumulative_model)$adj.r.squared
+        
+        interaction_output_df_top_20 <- rbind(interaction_output_df_top_20, data.frame(tbl = tbl,
+                                                                                       mem = mem,
+                                                                                       ROI = ROI,
+                                                                                       num_factors = i,
+                                                                                       cumulative_rsq = cumulative_rsquared_xm,
+                                                                                       cumulative_adj_rsq = cumulative_adj_rsquared_xm))
+        
+      }
+      
       
       ### top 50
       
@@ -560,8 +776,7 @@ for (tbl in tbl_names) {
         rsquared_individual_x[i] = summary(model)$r.squared
         adj_rsquared_individual_x[i] = summary(model)$adj.r.squared
         
-        mem_output_df_top_50_indiv <- rbind(mem_output_df_top_50_indiv, data.frame(
-                                      tbl = tbl,
+        mem_output_df_top_50_indiv <- rbind(mem_output_df_top_50_indiv, data.frame(tbl = tbl,
                                       mem = mem,
                                       ROI = ROI,
                                       num_factors = factor_index,
@@ -632,8 +847,7 @@ for (tbl in tbl_names) {
         # Extract and store the R-squared and adjusted R-squared values
         rsquared_indiv[i] <- summary(model)$r.squared
         adj_rsquared_indiv[i] <- summary(model)$adj.r.squared
-        output_df_top_50_indiv <- rbind(output_df_top_50_indiv, data.frame(
-                                  tbl = tbl,
+        output_df_top_50_indiv <- rbind(output_df_top_50_indiv, data.frame(tbl = tbl,
                                   mem = mem,
                                   ROI = ROI,
                                   num_factors = factor_index,
@@ -702,8 +916,7 @@ for (tbl in tbl_names) {
         # Extract and store the R-squared value
         rsquared_individual_xm[i] = summary(model)$r.squared
         adj_rsquared_individual_xm[i] = summary(model)$adj.r.squared
-        interaction_output_df_top_50_indiv <- rbind(interaction_output_df_top_50_indiv, data.frame(
-                                                tbl = tbl,
+        interaction_output_df_top_50_indiv <- rbind(interaction_output_df_top_50_indiv, data.frame(tbl = tbl,
                                                 mem = mem,
                                                 ROI = ROI,
                                                 num_factors = factor_index,
@@ -872,12 +1085,18 @@ dfs_list <- list(
   "output_top_8" = output_df_top_8,
   "interaction_top_8" = interaction_output_df_top_8,
   "mem_top_8" = mem_output_df_top_8,
+  "output_20" = output_df_top_20,
+  "interaction_top_20" = interaction_output_df_top_20,
+  "mem_top_20" = mem_output_df_top_20,
   "output_50" = output_df_top_50,
   "interaction_top_50" = interaction_output_df_top_50,
   "mem_top_50" = mem_output_df_top_50,
   "output_top_8_indiv" = output_df_top_8_indiv,
   "interaction_top_8_indiv" = interaction_output_df_top_8_indiv,
   "mem_top_8_indiv" = mem_output_df_top_8_indiv,
+  "output_20_indiv" = output_df_top_20_indiv,
+  "interaction_top_20_indiv" = interaction_output_df_top_20_indiv,
+  "mem_top_20_indiv_indiv" = mem_output_df_top_20_indiv,
   "output_50_indiv" = output_df_top_50_indiv,
   "interaction_top_50_indiv" = interaction_output_df_top_50_indiv,
   "mem_top_50_indiv_indiv" = mem_output_df_top_50_indiv
@@ -893,7 +1112,7 @@ for (sheet_name in names(dfs_list)) {
   writeData(wb, sheet_name, dfs_list[[sheet_name]])  # Write the data frame to the worksheet
 }
 # Save the workbook to a file
-file_path <- "/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_topFacFrom100_allFac_withFcn.xlsx"
+file_path <- "/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_topFacFrom50_allFac_withFcn.xlsx"
 saveWorkbook(wb, file = file_path, overwrite = TRUE)  # Save the workbook
 
 
