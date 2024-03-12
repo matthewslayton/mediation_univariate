@@ -51,7 +51,7 @@ library(glmnet)
 library(psych)
 
 
-factor_names <- c('F01','F02','F03','F04','F05','F06','F07','F08')
+#factor_names <- c('F01','F02','F03','F04','F05','F06','F07','F08')
 
 ROI_name_variable <- c('mask_AG_L','mask_AG_R','mask_ATL_L','mask_ATL_R',
                        'mask_FuG_L','mask_FuG_R','mask_Hipp_A','mask_Hipp_L',
@@ -65,18 +65,91 @@ ROI_name_variable <- c('mask_AG_L','mask_AG_R','mask_ATL_L','mask_ATL_R',
                        'mask_RSC_L','mask_RSC_R','mask_SMG_L','mask_SMG_R')
 
 
-ROI_noHemisphere <- c('mask_AG','mask_ATL','mask_FuG','mask_Hipp','mask_IFG',
-                      'mask_ITG','mask_LOC','mask_MVOC','mask_Pcun','mask_Perirhinal',
-                      'mask_PHC','mask_PhG','mask_PoG','mask_PrG',
-                      'mask_pSTS','mask_Rhinal','mask_RSC','mask_SMG')
+# ROI_noHemisphere <- c('mask_AG','mask_ATL','mask_FuG','mask_Hipp','mask_IFG',
+#                       'mask_ITG','mask_LOC','mask_MVOC','mask_Pcun','mask_Perirhinal',
+#                       'mask_PHC','mask_PhG','mask_PoG','mask_PrG',
+#                       'mask_pSTS','mask_Rhinal','mask_RSC','mask_SMG')
+
+
+
+# ## simon wants to plot where the knee is, so where when we keep adding predictors for X ~ M and the adj R2 starts to taper off
+# x_m_top_100 <- data.frame(nmf_type=character(),
+#                           tbl=character(),
+#                           mem=character(),
+#                           num_factors=numeric(),
+#                           cumulative_rsq=numeric(),
+#                           cumulative_adj_rsq=numeric(),
+#                           degrees_of_freedom=numeric())
+# 
+# pval <- data.frame(nmf_type=character(),
+#                    tbl = character(),
+#                    mem = character(),
+#                    factor = character(),
+#                    p_value = numeric(),
+#                    significant = logical())
+# 
+# 
+# M <- 200  # Replace 200 with the actual number of rows you expect
+# 
+# N <- 100  # Replace 100 with the actual number of rows you expect
+# 
+# x_m_top_100 <- data.frame(
+#   nmf_type=character(N),
+#   tbl=character(N),
+#   mem=character(N),
+#   num_factors=numeric(N),
+#   cumulative_rsq=numeric(N),
+#   cumulative_adj_rsq=numeric(N),
+#   degrees_of_freedom=numeric(N),
+#   stringsAsFactors = FALSE  # To avoid converting character vectors to factors
+# )
+# 
+# 
+# pval <- data.frame(
+#   nmf_type=character(M),
+#   tbl=character(M),
+#   mem=character(M),
+#   factor=character(M),
+#   p_value=numeric(M),
+#   significant=logical(M),
+#   stringsAsFactors = FALSE  # To avoid converting character vectors to factors
+# )
+
+# using a data frame and rbind is SO SLOW! It has to make a new df each time, so as it gets bigger the runtime gets longer
+results_list <- list()
+pvals <- list()
+iteration <- 1 #don't forget to increment in the inntermost loop (which is the top_factors loop)
+
+
+#nmf_types <- c(200,150,100,50) #need to do 150 too
+#nmf_types <- c("mostCol", "50", "100")
+nmf_types <- c("50", "100")
+#nmf_types <- c("200","300")
+for (factorNumber in nmf_types) {
 
 ########## encycl, unilateral, lexMem
-encycl <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_spreadsheets/avgActivity_BNA_nnmf_encycl_additionalROIs_unilateral.xlsx")
-vis <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_spreadsheets/avgActivity_BNA_nnmf_vis_additionalROIs_unilateral.xlsx")
-fcn <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_spreadsheets/avgActivity_BNA_nnmf_fcn_additionalROIs_unilateral.xlsx")
+## NMF with 228 factors and select the first 100
+# encycl <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_spreadsheets/avgActivity_BNA_nnmf_encycl_additionalROIs_unilateral.xlsx")
+# vis <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_spreadsheets/avgActivity_BNA_nnmf_vis_additionalROIs_unilateral.xlsx")
+# fcn <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_spreadsheets/avgActivity_BNA_nnmf_fcn_additionalROIs_unilateral.xlsx")
 memColWithNaN <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/correctMemColsWithNaNsNot999.xlsx")
 
+# encyclPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/avgActivity_BNA_nnmf_encycl_additionalROIs_unilateral.xlsx", factorNumber)
+# visPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/avgActivity_BNA_nnmf_vis_additionalROIs_unilateral.xlsx", factorNumber)
+# fcnPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/avgActivity_BNA_nnmf_fcn_additionalROIs_unilateral.xlsx", factorNumber)
+# allPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/avgActivity_BNA_nnmf_all_additionalROIs_unilateral.xlsx", factorNumber)
 
+
+encyclPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/avgActivity_BNA_nnmf_encycl_additionalROIs_unilateral.xlsx", factorNumber)
+visPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/avgActivity_BNA_nnmf_vis_additionalROIs_unilateral.xlsx", factorNumber)
+fcnPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/avgActivity_BNA_nnmf_fcn_additionalROIs_unilateral.xlsx", factorNumber)
+allPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/avgActivity_BNA_nnmf_all_additionalROIs_unilateral.xlsx", factorNumber)
+
+
+encycl <- import_list(encyclPath)
+vis <- import_list(visPath)
+fcn <- import_list(fcnPath)
+all <- import_list(allPath)
 
 # # read in our data
 # lexMem_HR <- readMat("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/lexMem_HR.mat")
@@ -90,31 +163,50 @@ memColWithNaN <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDriv
 # write.xlsx(mem_data, file = "/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/mem.xlsx", sheetName = "Memory Data")
 
 
-tbl_names <- c("encycl","vis","fcn")
+tbl_names <- c("encycl","vis","fcn","all")
 #tbl_names <- c("encycl","vis")
 #tbl_names <- c("encycl","vis","encycl_300","vis_300")
 # alt_tbl_names <- c("encycl_remembered","encycl_forgotten","vis_remembered","vis_forgotten",
 #                    "encycl_300_remembered","encycl_300_forgotten","vis_300_remembered","vis_300_forgotten")
 memType <- c("lexical_CR","visual_CR","lexical_HR","visual_HR","lexical_FAR","visual_FAR")
 
-
 ## need to add category cols
-ref_tbl_encycl <- read_excel("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/itemIDs.xlsx",sheet="encycl")
+## nmf from 228
+# ref_tbl_encycl <- read_excel("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/itemIDs.xlsx",sheet="encycl")
+# names(ref_tbl_encycl)[names(ref_tbl_encycl) == "id"] <- "ItemID"
+# ref_tbl_vis <- read_excel("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/itemIDs.xlsx",sheet="vis")
+# names(ref_tbl_vis)[names(ref_tbl_vis) == "id"] <- "ItemID"
+# ref_tbl_fcn <- read_excel("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/itemIDs.xlsx",sheet="fcn")
+# names(ref_tbl_fcn)[names(ref_tbl_fcn) == "id"] <- "ItemID"
+
+
+# refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/itemIDs_%d.xlsx", factorNumber, factorNumber)
+# ref_tbl_encycl <- read_excel(refTblPath, sheet="encycl")
+# names(ref_tbl_encycl)[names(ref_tbl_encycl) == "id"] <- "ItemID"
+# refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/itemIDs_%d.xlsx", factorNumber, factorNumber)
+# ref_tbl_vis <- read_excel(refTblPath, sheet="vis")
+# names(ref_tbl_vis)[names(ref_tbl_vis) == "id"] <- "ItemID"
+# refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/itemIDs_%d.xlsx", factorNumber, factorNumber)
+# ref_tbl_fcn <- read_excel(refTblPath, sheet="fcn")
+# names(ref_tbl_fcn)[names(ref_tbl_fcn) == "id"] <- "ItemID"
+# refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_%dfac/itemIDs_%d.xlsx", factorNumber, factorNumber)
+# ref_tbl_all <- read_excel(refTblPath, sheet="all")
+# names(ref_tbl_all)[names(ref_tbl_all) == "id"] <- "ItemID"
+
+
+
+refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/itemIDs_percentile_%s.xlsx", factorNumber, factorNumber)
+ref_tbl_encycl <- read_excel(refTblPath, sheet="encycl")
 names(ref_tbl_encycl)[names(ref_tbl_encycl) == "id"] <- "ItemID"
-ref_tbl_vis <- read_excel("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/itemIDs.xlsx",sheet="vis")
+refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/itemIDs_percentile_%s.xlsx", factorNumber, factorNumber)
+ref_tbl_vis <- read_excel(refTblPath, sheet="vis")
 names(ref_tbl_vis)[names(ref_tbl_vis) == "id"] <- "ItemID"
-ref_tbl_fcn <- read_excel("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/itemIDs.xlsx",sheet="fcn")
+refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/itemIDs_percentile_%s.xlsx", factorNumber, factorNumber)
+ref_tbl_fcn <- read_excel(refTblPath, sheet="fcn")
 names(ref_tbl_fcn)[names(ref_tbl_fcn) == "id"] <- "ItemID"
-
-# simon wants to plot where the knee is, so where when we keep adding predictors for X ~ M and the adj R2 starts to taper off
-x_m_top_100 <- data.frame(tbl=character(),mem=character(),num_factors=numeric(),cumulative_rsq=numeric(),cumulative_adj_rsq=numeric(),degrees_of_freedom=numeric())
-
-pval <- data.frame(tbl = character(),
-                   mem = character(),
-                   factor = character(),
-                   p_value = numeric(),
-                   significant = logical())
-
+refTblPath <- sprintf("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/nmf_percentile_%s/itemIDs_percentile_%s.xlsx", factorNumber, factorNumber)
+ref_tbl_all <- read_excel(refTblPath, sheet="all")
+names(ref_tbl_all)[names(ref_tbl_all) == "id"] <- "ItemID"
 # tbl <- "encycl"
 # mem <- "lexical_CR"
 # ROI_name <- 'mask_AG_L'
@@ -141,9 +233,32 @@ for (tbl in tbl_names) {
       
       ### need to add the rest of the facs that match the rows correctly
       # there are more than 67 factors, but 67 is the number of top factors after applying thresholding
-      how_many_fac <- 50 #100 #228 #67, 8
+     # how_many_fac <- 228 #50 #100 #228 #67, 8
       
-      if (tbl == "encycl" || tbl == "vis") {
+      
+      # Function to extract the numeric part from the right-most column name
+      extract_numeric_part <- function(data_frame) {
+        # Get the name of the right-most column
+        right_most_column <- names(data_frame)[ncol(data_frame)]
+        
+        # Extract the numeric part from the column name
+        # This assumes the column name format is one letter followed by numbers
+        numeric_part <- as.integer(gsub("F", "", right_most_column))
+        
+        return(numeric_part)
+      }
+      
+      if (tbl == "encycl") {
+        how_many_fac <- extract_numeric_part(ref_tbl_encycl)
+      } else if (tbl == "vis") {
+        how_many_fac <- extract_numeric_part(ref_tbl_vis)
+      } else if (tbl == "fcn") {
+        how_many_fac <- extract_numeric_part(ref_tbl_fcn)
+      } else if (tbl == "all") {
+        how_many_fac <- extract_numeric_part(ref_tbl_all)
+      }
+      
+      if (tbl == "encycl" || tbl == "vis" || tbl == "all") {
         
         # Generate column names for the additional factors beyond F08
         factor_cols <- paste0("F", sprintf("%02d", 9:how_many_fac))
@@ -214,6 +329,20 @@ for (tbl in tbl_names) {
         ref_tbl_fcn_subset <- dplyr::select(ref_tbl_fcn, ItemID, lexMem_HR, lexMem_FAR, visMem_HR, visMem_FAR, all_of(factor_cols))
         # Perform the left join to add these columns to curr_fac_tbl
         updated_curr_fac_tbl <- dplyr::left_join(curr_fac_tbl, ref_tbl_fcn_subset, by = "ItemID")
+        # Update curr_fac_tbl with the newly added columns
+        curr_fac_tbl <- updated_curr_fac_tbl
+        # rename because I'm swimming in freaking arbitrary naming conventions
+        curr_fac_tbl <- curr_fac_tbl %>%
+          rename(
+            lexical_HR = lexMem_HR,
+            lexical_FAR = lexMem_FAR,
+            visual_HR = visMem_HR,
+            visual_FAR = visMem_FAR
+          )
+      } else if (tbl == "all") {
+        ref_tbl_all_subset <- dplyr::select(ref_tbl_all, ItemID, lexMem_HR, lexMem_FAR, visMem_HR, visMem_FAR, all_of(factor_cols))
+        # Perform the left join to add these columns to curr_fac_tbl
+        updated_curr_fac_tbl <- dplyr::left_join(curr_fac_tbl, ref_tbl_all_subset, by = "ItemID")
         # Update curr_fac_tbl with the newly added columns
         curr_fac_tbl <- updated_curr_fac_tbl
         # rename because I'm swimming in freaking arbitrary naming conventions
@@ -327,13 +456,13 @@ for (tbl in tbl_names) {
                             adj_r2_change = numeric())
       
       for (i in 1:how_many_fac) {
-        # Create the formula for the model including all mediators
-        included_mediators <- paste0("Average_M", setdiff(1:how_many_fac, i), collapse = " + ")
-        formula_included <- as.formula(paste("Average_X ~ ", included_mediators))
-        
         # Create the formula for the model excluding the current mediator
-        excluded_mediators <- paste0("Average_M", i, collapse = " + ")
+        excluded_mediators <- paste0("Average_M", setdiff(1:how_many_fac, i), collapse = " + ")
         formula_excluded <- as.formula(paste("Average_X ~ ", excluded_mediators))
+        
+        # all mediators
+        included_mediators <- paste0("Average_M", 1:how_many_fac, collapse = " + ")
+        formula_included <- as.formula(paste("Average_X ~ ", included_mediators))
         
         # Fit the models
         model_included <- lm(formula_included, data = average_values_by_Item)
@@ -364,8 +493,10 @@ for (tbl in tbl_names) {
       # if it's positive, that means excluding the factor helps.
       # now, they're all negative, so I'm really looking for HOW negative. So, sorting from least to greatest gives me the top factors
       
-      # Sort the results data frame by adj_r2_change column from least to greatest
-      results_sorted <- results[order(results$adj_r2_change), ]
+      # Sort the results data frame by adj_r2_change column from greatest to least
+      # because the biggest difference would mean that factor is important
+      results_sorted <- results[order(-results$adj_r2_change), ]
+      #results_sorted <- results[order(results$adj_r2_change), ] #i had it like this before
       
       top_factors <- results_sorted$mediator
       
@@ -391,12 +522,23 @@ for (tbl in tbl_names) {
         # Combine selected_factors into a single comma-separated string
         factors_string <- paste(selected_factors, collapse = ", ")
         
-        x_m_top_100 <- rbind(x_m_top_100, data.frame(tbl = tbl,
-                                                   mem = mem,
-                                                   num_factors = factors_string,
-                                                   cumulative_rsq = cumulative_rsquared,
-                                                   cumulative_adj_rsq = cumulative_adj_rsquared,
-                                                   degrees_of_freedom = cumulative_df))
+        # x_m_top_100 <- rbind(x_m_top_100, data.frame(nmf_type=as.character(factorNumber),
+        #                                            tbl = tbl,
+        #                                            mem = mem,
+        #                                            num_factors = factors_string,
+        #                                            cumulative_rsq = cumulative_rsquared,
+        #                                            cumulative_adj_rsq = cumulative_adj_rsquared,
+        #                                            degrees_of_freedom = cumulative_df))
+        
+        results_list[[iteration]] <- list(
+          nmf_type = as.character(factorNumber),
+          tbl = tbl,
+          mem = mem,
+          num_factors = factors_string,
+          cumulative_rsq = cumulative_rsquared,
+          cumulative_adj_rsq = cumulative_adj_rsquared,
+          degrees_of_freedom = cumulative_df
+        )
         
         # Extract predictor names and their p-values
         coefficients_summary <- summary(cumulative_model)$coefficients
@@ -412,24 +554,38 @@ for (tbl in tbl_names) {
             factor_name <- gsub("Average_", "", predictor_names[j])  # Remove "Average_" prefix
             p_value <- predictor_p_values[j]
             significant <- !is.na(p_value) && p_value < 0.05
-            pval <- rbind(pval, data.frame(tbl=tbl,
-                                           mem=mem,
-                                           factor=factor_name,
-                                           p_value=p_value,
-                                           significant=significant,
-                                           stringsAsFactors = FALSE))
+            # pval <- rbind(pval, data.frame(nmf_type=as.character(factorNumber),
+            #                                tbl=tbl,
+            #                                mem=mem,
+            #                                factor=factor_name,
+            #                                p_value=p_value,
+            #                                significant=significant,
+            #                                stringsAsFactors = FALSE))
+            pvals[[iteration]] <- list(
+              nmf_type=as.character(factorNumber),
+               tbl=tbl,
+               mem=mem,
+               factor=factor_name,
+               p_value=p_value,
+               significant=significant)
           }
         }
-        
-      }
-      
+        iteration <- iteration + 1  # Increment iteration after each assignment
+      } #top_factors
+     
   
       toc()
     #} #end ROI_name_variable
     print(paste("finished mem:",mem))
   } #end memType
   print(paste("finished tbl:",tbl))
-} #end tbl_names
+} #end 
+print(paste("finished nmf type:",factorNumber))
+} #end nmf_types (when we do NMF done with 200, 100, or 50 factors)
+
+# convert lists back to df
+x_m_top_100 <- do.call(rbind, lapply(results_list, data.frame, stringsAsFactors = FALSE))
+pval <- do.call(rbind, lapply(pvals, data.frame, stringsAsFactors = FALSE))
 
 
 # Create a list of data frames with names
@@ -448,19 +604,55 @@ for (sheet_name in names(dfs_list)) {
   writeData(wb, sheet_name, dfs_list[[sheet_name]])  # Write the data frame to the worksheet
 }
 # Save the workbook to a file
-file_path <- "/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_top50_whereIsTheKnee.xlsx"
+#file_path <- "/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_200_150_100_50_nmf_whereIsTheKnee_encyclVisFcnAll.xlsx"
+#file_path <- "/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_percentile_100_50_nmf_whereIsTheKnee_encyclVisFcnAll.xlsx"
+file_path <- "/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_percentile_200_300_nmf_whereIsTheKnee_encyclVisFcnAll.xlsx"
 saveWorkbook(wb, file = file_path, overwrite = TRUE)  # Save the workbook
 
-
-
-# subset_df <- subset(x_m_top_100, tbl == "fcn" & mem == "lexical_CR")
-# subset_df$cumulative_adj_rsq
+# 
+# 
+# subset_df <- subset(x_m_top_100, nmf_type == 100 & tbl == "encycl" & mem == "lexical_CR")
+# cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
 # # Extract the right-most/new factor from each string in subset_df$num_factors
 # subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
 # # Convert latest_factor to a factor with levels in the order they appear
 # subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
 # ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq)) +
-#   geom_bar(stat = "identity", fill = "darkorchid4") +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+#         panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         axis.line = element_line(colour = "black")) +
+#   labs(title = "Cumulative Adj R-Squared lexMem CR Encyclopedic Fac",
+#        x = "Factor",
+#        y = "Cumulative Adj R-Squared")
+# 
+# subset_df <- subset(x_m_top_100, nmf_type == 100 & tbl == "vis" & mem == "lexical_CR")
+# cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
+# # Extract the right-most/new factor from each string in subset_df$num_factors
+# subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
+# # Convert latest_factor to a factor with levels in the order they appear
+# subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
+# ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq)) +
+#   geom_bar(stat = "identity", fill = "brown2") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+#         panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         axis.line = element_line(colour = "black")) +
+#   labs(title = "Cumulative Adj R-Squared lexMem CR Visual Fac",
+#        x = "Factor",
+#        y = "Cumulative Adj R-Squared")
+# 
+# subset_df <- subset(x_m_top_100, nmf_type == 100 & tbl == "fcn" & mem == "lexical_CR")
+# cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
+# # Extract the right-most/new factor from each string in subset_df$num_factors
+# subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
+# # Convert latest_factor to a factor with levels in the order they appear
+# subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
+# ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq)) +
+#   geom_bar(stat = "identity", fill = "darkgoldenrod1") +
 #   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
 #         panel.background = element_blank(),
 #         panel.grid.major = element_blank(),
@@ -469,8 +661,118 @@ saveWorkbook(wb, file = file_path, overwrite = TRUE)  # Save the workbook
 #   labs(title = "Cumulative Adj R-Squared lexMem CR Functional Fac",
 #        x = "Factor",
 #        y = "Cumulative Adj R-Squared")
+# # 
+# # # I did darkorange3, steelblue, and darkorchid4. maybe do darkgoldenrod1 to match fcn
 # 
-# # I did darkorange3, steelblue, and darkorchid4
+# subset_df <- subset(x_m_top_100, nmf_type == 150 & tbl == "all" & mem == "lexical_CR")
+# cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
+# # Extract the right-most/new factor from each string in subset_df$num_factors
+# subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
+# # Convert latest_factor to a factor with levels in the order they appear
+# subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
+# ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq)) +
+#   geom_bar(stat = "identity", fill = "green4") +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+#         panel.background = element_blank(),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         axis.line = element_line(colour = "black")) +
+#   labs(title = "Cumulative Adj R-Squared lexMem CR All Fac",
+#        x = "Factor",
+#        y = "Cumulative Adj R-Squared")
 
+### heat map using factor index as the continuous value for the color gradient
 
+subset_df <- subset(x_m_top_100, nmf_type == 100 & tbl == "encycl" & mem == "lexical_CR")
+cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
+
+subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
+subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
+
+subset_df$factor_index <- as.numeric(as.factor(subset_df$latest_factor))
+# Now plot using this index for the fill color
+ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq, fill = factor_index)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient(low = "#1f77b4", high = "#d62728", guide = FALSE) +  # Adjust colors as needed
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  labs(title = "Cumulative Adj R-Squared lexMem CR Encycl Fac",
+       x = "Factor",
+       y = "Cumulative Adj R-Squared")
+
+subset_df <- subset(x_m_top_100, nmf_type == 100 & tbl == "vis" & mem == "lexical_CR")
+cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
+subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
+subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
+
+subset_df$factor_index <- as.numeric(as.factor(subset_df$latest_factor))
+# Now plot using this index for the fill color
+ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq, fill = factor_index)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient(low = "#4daf4a", high = "#984ea3", guide = FALSE) +  # Adjust colors as needed
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  labs(title = "Cumulative Adj R-Squared lexMem CR Vis Fac",
+       x = "Factor",
+       y = "Cumulative Adj R-Squared")
+
+subset_df <- subset(x_m_top_100, nmf_type == 100 & tbl == "fcn" & mem == "lexical_CR")
+cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
+subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
+subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
+
+subset_df$factor_index <- as.numeric(as.factor(subset_df$latest_factor))
+# Now plot using this index for the fill color
+ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq, fill = factor_index)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient(low = "#377eb8", high = "#ff7f00", guide = FALSE) +  # Adjust colors as needed
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  labs(title = "Cumulative Adj R-Squared lexMem CR Fcn Fac",
+       x = "Factor",
+       y = "Cumulative Adj R-Squared")
+
+subset_df <- subset(x_m_top_100, nmf_type == 100 & tbl == "all" & mem == "lexical_CR")
+cumulative_adj_rsq <- subset_df$cumulative_adj_rsq
+subset_df$latest_factor <- sapply(strsplit(subset_df$num_factors, ", "), function(x) tail(x, 1))
+subset_df$latest_factor <- factor(subset_df$latest_factor, levels = unique(subset_df$latest_factor))
+
+subset_df$factor_index <- as.numeric(as.factor(subset_df$latest_factor))
+# Now plot using this index for the fill color
+ggplot(subset_df, aes(x = latest_factor, y = cumulative_adj_rsq, fill = factor_index)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient(low = "#a6cee3" , high = "#fdbf6f", guide = FALSE) +  # Adjust colors as needed
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  labs(title = "Cumulative Adj R-Squared lexMem CR All Fac",
+       x = "Factor",
+       y = "Cumulative Adj R-Squared")
+
+# Adjusted Blue and Red:
+#   Low: "#1f77b4" (adjusted blue)
+# High: "#d62728" (adjusted red)
+# 
+# Blue and Orange:
+#   Low: "#377eb8" (vivid blue)
+# High: "#ff7f00" (bright orange)
+# 
+# Green and Purple:
+#   Low: "#4daf4a" (muted green)
+# High: "#984ea3" (muted purple)
+# 
+# Sky Blue and Yellow-Orange:
+#   Low: "#a6cee3" (light, sky blue)
+# High: "#fdbf6f" (yellow-orange)
 
