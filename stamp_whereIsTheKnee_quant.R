@@ -25,17 +25,20 @@ library(zoo)
 # this came from the other whereIsTheKnee script and was done with 50 factors
 #nmf_types <- c(200,150,100,50)
 #nmf_types <- c(100,50)
-nmf_types <- c(200,300)
-#nmf_types <- c(150)
+#nmf_types <- c(200,300)
+nmf_types <- c(100)
 tbl_types <- c("encycl","vis","fcn","all")
-memType <- c("lexical_CR","visual_CR","lexical_HR","visual_HR","lexical_FAR","visual_FAR")
+#memType <- c("lexical_CR","visual_CR","lexical_HR","visual_HR","lexical_FAR","visual_FAR")
+memType <- c("lexical_CR","visual_CR") #,"lexical_HR","visual_HR","lexical_FAR","visual_FAR")
 
 
 #results <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_200_150_100_50_nmf_whereIsTheKnee.xlsx")
 
 #results <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_200_150_100_50_nmf_whereIsTheKnee_encyclVisFcnAll.xlsx")
 #results <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_percentile_100_50_nmf_whereIsTheKnee_encyclVisFcnAll.xlsx")
-results <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_percentile_200_300_nmf_whereIsTheKnee_encyclVisFcnAll.xlsx")
+#results <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_percentile_200_300_nmf_whereIsTheKnee_encyclVisFcnAll.xlsx")
+
+
 
 # this is from the combined moderators
 #results <- import_list("/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/varExplained_R2change_from_X-M_encyclVisFcn_nmf150.xlsx")
@@ -65,9 +68,6 @@ for (nmf in nmf_types) {
     } #memType
   } #tbl_type
 } #nmf_type
-
-
-
 
 #### (2) COMBINED into one
 
@@ -119,4 +119,5 @@ ggplot(data, aes(x = latest_factor, y = cumulative_adj_rsq)) +
   labs(title = "Cumulative Adj R-Squared lexMem CR All Fac",
        x = "Factor",
        y = "Cumulative Adj R-Squared")
+
 

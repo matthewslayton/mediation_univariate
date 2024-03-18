@@ -374,25 +374,23 @@ for (tbl in tbl_names) {
         ItemID = gsub("ItemID", "", row_names[grep("ItemID", row_names)]), # This extracts just the numeric part
         Estimate = itemID_rows
       )
+      # Make sure that the ItemID columns are of the same type before the join
+      itemID_data$ItemID <- as.factor(itemID_data$ItemID)
+      updated_data_mixed_clean$ItemID <- as.factor(updated_data_mixed_clean$ItemID)
+      # Merge the new data frame with the updated_data_mixed_clean data frame
+      # by matching the ItemID column, and update the Y values
+      updated_data_mixed_clean <- dplyr::left_join(updated_data_mixed_clean, itemID_data, by = "ItemID")
+      # Replace Y with the estimates
+      # This assumes that the Estimate column from itemID_data now exists in updated_data_mixed_clean after the join
+     
+      #updated_data_mixed_clean$Y <- updated_data_mixed_clean$Estimate
+      #### My new Y isn't varying by item and I cluster by item in the mediation model
+      # Could be due to including only fixed effects in the estimates. We have a random effect of subject
+      # which is important becaused correctedRecog_CRET and _PRET are subject-specific
       
-      # WITH THIS COMMENTED OUT, I GET ORIGINAL Y
-      # # Make sure that the ItemID columns are of the same type before the join
-      # itemID_data$ItemID <- as.factor(itemID_data$ItemID)
-      # updated_data_mixed_clean$ItemID <- as.factor(updated_data_mixed_clean$ItemID)
-      # # Merge the new data frame with the updated_data_mixed_clean data frame
-      # # by matching the ItemID column, and update the Y values
-      # updated_data_mixed_clean <- dplyr::left_join(updated_data_mixed_clean, itemID_data, by = "ItemID")
-      # # Replace Y with the estimates
-      # # This assumes that the Estimate column from itemID_data now exists in updated_data_mixed_clean after the join
-      # 
-      # #updated_data_mixed_clean$Y <- updated_data_mixed_clean$Estimate
-      # #### My new Y isn't varying by item and I cluster by item in the mediation model
-      # # Could be due to including only fixed effects in the estimates. We have a random effect of subject
-      # # which is important becaused correctedRecog_CRET and _PRET are subject-specific
-      # 
-      # ###### IF I DON"T DO THIS, I SHOULD BE ABLE TO RUN THE OLD Y
-      # #updated_data_mixed_clean$Y <- predict(model_both, re.form = NULL)
-      # updated_data_mixed_clean$Y <- predict(model_both, re.form = NA)
+      ###### IF I DON"T DO THIS, I SHOULD BE ABLE TO RUN THE OLD Y
+      #updated_data_mixed_clean$Y <- predict(model_both, re.form = NULL)
+      updated_data_mixed_clean$Y <- predict(model_both, re.form = NA)
       
       
       
@@ -439,6 +437,8 @@ for (tbl in tbl_names) {
           # Apply mean() to all M columns without changing their names
           across(starts_with("M"), mean, na.rm = TRUE)
         )
+
+
        results <- data.frame(mediator = character(),
                             r2_included = numeric(),
                             r2_excluded = numeric(),
@@ -451,11 +451,10 @@ for (tbl in tbl_names) {
 
         # Create the formula for the model excluding the current mediator
         excluded_mediators <- paste0("M", setdiff(1:how_many_fac, i), collapse = " + ")
-        formula_excluded <- as.formula(paste("X ~ ", excluded_mediators))
+        formula_excluded <- as.formula(paste0("Y ~ X + ", excluded_mediators))
 
-        # all mediators
         included_mediators <- paste0("M", 1:how_many_fac, collapse = " + ")
-        formula_included <- as.formula(paste("X ~ ", included_mediators))
+        formula_included <- as.formula(paste0("Y ~ X + ", included_mediators))
 
         # Fit the models
         model_included <- lm(formula_included, data = average_values_by_Item)
@@ -931,10 +930,8 @@ if (class(mediation_output_df$ci_upper) == "character")
 #filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_topFacFromX-M_mar12_nmf%d_original_Y.xlsx',factorNumber)
 #filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_topFacFromX-M_mar12_nmf%d_newY_meanCtr_X.xlsx',factorNumber)
 #filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_topFacFromX-M_mar12_nmf%d_newY_meanCtr_X_meanCtr_M_conPerTogether_topFacWithAveragingFirst_runAvgData_Y_X_plus_M.xlsx',factorNumber)
-#filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_topFacFromX-M_mar12_nmf%d_newY_meanCtr_X_meanCtr_M_conPerTogether_topFac_unAdjR2_justCurious.xlsx',factorNumber)
-#filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_topFacFromX-M_mar12_nmf%d_newY_meanCtr_X_meanCtr_M_conPerTogether_topFac_X_M.xlsx',factorNumber)
-filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_topFacFromX-M_mar12_nmf%d_oldY_meanCtr_X_meanCtr_M_conPerTogether_topFac_M1_to_M5.xlsx',factorNumber)
-
+#filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_mar12_nmf%d_newY_meanCtr_X_meanCtr_M_conPerTogether_topFac_Y-M.xlsx',factorNumber)
+filename <- sprintf('/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/medAnalysis_mar12_nmf%d_newY_meanCtr_X_meanCtr_M_conPerTogether_topFac_Y-X+M.xlsx',factorNumber)
 
 write_xlsx(mediation_output_df, filename)
 
