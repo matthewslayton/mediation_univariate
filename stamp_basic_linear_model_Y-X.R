@@ -49,6 +49,7 @@ library(pscl)
 library(tictoc)
 library(glmnet)
 library(psych)
+library(tidyr)
 
 
 #factor_names <- c('F01','F02','F03','F04','F05','F06','F07','F08')
@@ -116,7 +117,8 @@ ROI_name_variable <- c('mask_AG_L','mask_AG_R','mask_ATL_L','mask_ATL_R',
 # )
 
 # using a data frame and rbind is SO SLOW! It has to make a new df each time, so as it gets bigger the runtime gets longer
-results<- list()
+results_original <- list()
+results_adjusted <- list()
 iteration <- 1 #don't forget to increment in the inntermost loop (which is the top_factors loop)
 
 
@@ -231,8 +233,11 @@ memType <- c("lexical_CR","visual_CR","lexical_HR","visual_HR","lexical_FAR","vi
 # ROI_name <- 'mask_AG_L'
 # mem <- "lexical_HR"
 
+# ROI_name <- 'mask_Hipp_R'
+# ROI_name <- 'mask_Pcun_L'
+# ROI_name <- 'mask_PoG_R'
 
-#for (tbl in tbl_names) {
+# for (tbl in tbl_names) {
 #  tic()
 tbl <- "encycl"
   for (mem in memType) {
@@ -427,6 +432,7 @@ tbl <- "encycl"
 
       model_both <- lmer(Y ~ correctedRecog_CRET + correctedRecog_PRET + ItemID + (1|Subj),data=updated_data_mixed_clean)
        #get predicted values for each item. fit.model and use these (like you use the averages) in the mediation model
+      # we want to know the effect of different items on Y. That's why it's a fixed effect
       model_sum <- summary(model_both)
       coefficients_df <- model_sum$coefficients
       row_names <- rownames(coefficients_df)
@@ -444,48 +450,115 @@ tbl <- "encycl"
       # by matching the ItemID column, and update the Y values
       updated_data_mixed_clean <- dplyr::left_join(updated_data_mixed_clean, itemID_data, by = "ItemID")
      
-      updated_data_mixed_clean$Y <- predict(model_both, re.form = NA)
+      updated_data_mixed_clean$Y_adjusted <- predict(model_both, re.form = NA)
+      
+      ### need y_adjusted, itemID, and X (it's not subject-wise, so just need 242 total)
+      unique_item_y_adjusted <- updated_data_mixed_clean %>%
+        group_by(ItemID) %>%
+        summarize(Y_adjusted = first(Y_adjusted),
+                  X = first(X),
+                  .groups = 'drop')
+      
+      ### for original Y which is subject-wise, have to average
+      average_values_by_Item <- updated_data_mixed_clean %>%
+        group_by(ItemID) %>%
+        summarize(
+          X = mean(X, na.rm = TRUE),
+          Y = mean(Y, na.rm = TRUE),
+          # Apply mean() to all M columns without changing their names
+          across(starts_with("M"), mean, na.rm = TRUE)
+        )
+      
+      ### if you're working manually, skip down to the bottom to plot
+      
+      #### it's the same Y for each item for all subjects
+      # so just make a new data frame
+      
+      #### include fixed effects of corrected recognition for CRET and PRET AND itemID.
+      #### don't include random effects of Subj.
+      ### That means that we get predicted values for Y, adjusting for these fixed effects, without
+      ### the confounding influence of subject-level variability. 
       
       ### at this point we have updated_data_mixed_clean
+      
+      ###### don't just show subjects images and get betas. 
+      ## we're arguing that we need to adjust the brain activity, and then we can look
+      ## at item memorability. We have to account for the subjects' memory (conceptual and perceptual)
+      ## for the items. We adjust that out of the activation so it's more intrinsic to the item,
+      ## accounting for subject-level variance.
+      ## Can critique Contier et al. 2023. Three subjects
+      ## Can be a figure
       
       
       
       
       # need beta coeffs (which are slopes), p-values, and R2 for var explained
       
-
+      
+      ### now, we've controlled for the effect of subject and item, but X wasn't included
+      ### in the adjustment. X is repeated for each of the 19 subjects, so we have to control for that
+      
       # Fit the linear model for Y~X
-      model <- lm(Y ~ X, data = updated_data_mixed_clean)
+      model_adjusted <- lm(Y_adjusted ~ X, data = unique_item_y_adjusted)
 
-      # Summary of the model to extract R-squared and adjusted R-squared
-      model_summary <- summary(model)
+      model_original <- lm(Y ~ X, data = average_values_by_Item)
 
-      # Extract R-squared and Adjusted R-squared values
-      r_squared <- model_summary$r.squared
-      adj_r_squared <- model_summary$adj.r.squared
-      df <- model_summary$df[2]
+
+      ## scatter plot Y_adjusted and avg_Y (by item)
       
-      # Extract beta coefficient for memorability type
-      beta <- coef(model_summary)["X", "Estimate"]
+      ## plot mturk memorability on y-axis and brain activity x-axis and make scatter 
+      ## plot and line of best fit to show how adjusted Y vs original Y compares
+      #### (see which Y predicts mem better)
       
-      # Extract p-value for memorability type
-      p_value <- coef(model_summary)["X", "Pr(>|t|)"]
+      # Summary for model_adjusted
+      summary_adjusted <- summary(model_adjusted)
+      # R-squared and Adjusted R-squared values
+      r_squared_adjusted <- summary_adjusted$r.squared
+      adj_r_squared_adjusted <- summary_adjusted$adj.r.squared
+      # Degrees of freedom
+      df_adjusted <- summary_adjusted$df[2]
+      # Beta coefficient for X
+      beta_adjusted <- coef(summary_adjusted)["X", "Estimate"]
+      # P-value for X
+      p_value_adjusted <- coef(summary_adjusted)["X", "Pr(>|t|)"]
+      # Consolidate results for model_adjusted
+      results_adjusted[[iteration]] <- list(
+        mem = mem,
+        ROI = ROI_name,
+        beta = beta_adjusted, 
+        p_value = p_value_adjusted, 
+        r_squared = r_squared_adjusted,
+        df = df_adjusted,
+        adj_r_squared = adj_r_squared_adjusted
+      )
       
-      results[[iteration]] <- list(mem = mem,
-                                  ROI = ROI_name,
-                                  beta = beta, 
-                                  p_value = p_value, 
-                                  r_squared = r_squared,
-                                  df = df,
-                                  adj_r_squared = adj_r_squared)
+      # Summary for model_original
+      summary_original <- summary(model_original)
+      # R-squared and Adjusted R-squared values
+      r_squared_original <- summary_original$r.squared
+      adj_r_squared_original <- summary_original$adj.r.squared
+      # Degrees of freedom
+      df_original <- summary_original$df[2]
+      # Beta coefficient for X
+      beta_original <- coef(summary_original)["X", "Estimate"]
+      # P-value for X
+      p_value_original <- coef(summary_original)["X", "Pr(>|t|)"]
+      
+      # Consolidate results for model_original
+      results_original[[iteration]] <- list(
+        mem = mem,
+        ROI = ROI_name,
+        beta = beta_original, 
+        p_value = p_value_original, 
+        r_squared = r_squared_original,
+        df = df_original,
+        adj_r_squared = adj_r_squared_original
+      )
       
       iteration = iteration + 1
     
-
-
-
   
-            ROI_time <- toc(log = TRUE)  # Store the time without printing
+      ROI_time <- toc(log = TRUE)  # Store the time without printing
       cat(sprintf("Finished ROI: %s. Total time %f sec elapsed for this ROI\n", ROI_name, ROI_time$toc - ROI_time$tic))
     } #end ROI_name_variable
     mem_time <- toc(log = TRUE)  # Store the time without printing
@@ -496,11 +569,75 @@ tbl <- "encycl"
 #  } #tbl
 #} #end nmf_types (when we do NMF done with 200, 100, or 50 factors)
 
+
 # convert lists back to df
-results_df <- do.call(rbind, lapply(results, function(x) as.data.frame(t(unlist(x)), stringsAsFactors = FALSE)))
+results_original_df <- do.call(rbind, lapply(results_original, function(x) as.data.frame(t(unlist(x)), stringsAsFactors = FALSE)))
+results_adjusted_df <- do.call(rbind, lapply(results_adjusted, function(x) as.data.frame(t(unlist(x)), stringsAsFactors = FALSE)))
+
+results_original_df_renamed <- results_original_df %>%
+  rename(
+    beta_original = beta,
+    p_value_original = p_value,
+    r_squared_original = r_squared,
+    adj_r_squared_original = adj_r_squared,
+    df_original = df
+  )
+
+# Rename columns for the adjusted data frame
+results_adjusted_df_renamed <- results_adjusted_df %>%
+  rename(
+    beta_adjusted = beta,
+    p_value_adjusted = p_value,
+    r_squared_adjusted = r_squared,
+    adj_r_squared_adjusted = adj_r_squared,
+    df_adjusted = df
+  )
+
+# convert all this shit to numeric
+results_adjusted_df_renamed <- results_adjusted_df_renamed %>%
+  mutate(across(-c(mem, ROI), as.numeric))
+results_original_df_renamed <- results_original_df_renamed %>%
+  mutate(across(-c(mem, ROI), as.numeric))
+
 # Bonferroni Correction
-results_df$p_value_bonferroni <- p.adjust(results_df$p_value, method = "bonferroni")
+#results_original_df_renamed$p_value_bonferroni_original <- p.adjust(results_original_df_renamed$p_value_original, method = "bonferroni")
+#results_adjusted_df_renamed$p_value_bonferroni_adjusted <- p.adjust(results_adjusted_df_renamed$p_value_adjusted, method = "bonferroni")
 
 
 
-write_xlsx(results_df,"/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/Y-X_sigROIs.xlsx")
+merged_df <- inner_join(results_original_df_renamed, results_adjusted_df_renamed, by = c("mem", "ROI"))
+
+write_xlsx(merged_df,"/Users/matthewslayton/Library/CloudStorage/OneDrive-DukeUniversity/STAMP/Y-X_sigROIs.xlsx")
+
+
+
+
+
+#### when you pick ROIs, not just top, but hypothesis-based too
+average_values_selected <- dplyr::select(average_values_by_Item, ItemID, Y, X)
+unique_item_y_adjusted_selected <- dplyr::select(unique_item_y_adjusted, ItemID, Y_adjusted, X)
+
+# Joining the dataframes on 'ItemID'
+combined_data <- left_join(average_values_selected, unique_item_y_adjusted_selected, by = "ItemID")
+
+colnames(combined_data)[3] <- 'X'
+
+# Calculate correlation coefficients
+cor_Y <- cor(combined_data$Y, combined_data$X, use = "complete.obs")
+cor_Y_adjusted <- cor(combined_data$Y_adjusted, combined_data$X, use = "complete.obs")
+
+# Reshape the data for plotting with ggplot2
+long_data <- combined_data %>%
+  pivot_longer(cols = c(Y, Y_adjusted), names_to = "Variable", values_to = "Brain_Activity")
+
+# Plot
+ggplot(long_data, aes(x = Brain_Activity, y = X, color = Variable)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) + # Add linear regression line without confidence interval
+  theme_minimal() +
+  labs(x = "Brain Activity", y = "Memorability", title = "Original vs Adjusted Brain Activity PoG R") +
+  scale_color_manual(values = c("Y" = "blue", "Y_adjusted" = "red"), labels = c("Y" = "Original Y", "Y_adjusted" = "Adjusted Y")) +
+  annotate("text", x = Inf, y = Inf, label = sprintf("Cor(Y, X): %.2f\nCor(Y_adjusted, X): %.2f", cor_Y, cor_Y_adjusted),
+           hjust = 1.1, vjust = 1.1, size = 4, color = "black") +
+  theme(legend.position = "bottom")
+
